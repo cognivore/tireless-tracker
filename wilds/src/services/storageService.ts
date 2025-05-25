@@ -135,9 +135,19 @@ export const decrementClick = (state: AppState, screenId: string, buttonId: stri
     const button = screen.buttons.find(b => b.id === buttonId);
     if (button && button.count > 0) {
       button.count -= 1;
-      if (button.clicks.length > 0) {
-        button.clicks.pop();
-      }
+      
+      // Don't remove the click record, just mark it differently
+      // In a real app, you might want to add a separate array for decrements
+      // But for simplicity, we'll keep it in one array with a timestamp
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      
+      // Add a "decrement" click record
+      button.clicks.push({
+        timestamp: now.getTime(),
+        date: today,
+        isDecrement: true // We add this property to track decrements
+      });
     }
   }
   

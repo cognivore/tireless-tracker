@@ -30,11 +30,17 @@ export default function Navigation({
       <div className="screens-tabs">
         {activeScreens.map(screen => (
           <div key={screen.id} className="screen-tab-container">
-            {screen.id === currentScreenId && (
-              <>
+            <button
+              className={`screen-tab ${screen.id === currentScreenId ? 'active' : ''}`}
+              onClick={() => onScreenChange(screen.id)}
+            >
+              <div className="screen-actions">
                 <button 
                   className="edit-screen-button"
-                  onClick={() => onEditScreenClick(screen.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditScreenClick(screen.id);
+                  }}
                   aria-label={`Edit ${screen.name}`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -43,7 +49,10 @@ export default function Navigation({
                 </button>
                 <button 
                   className="delete-screen-button"
-                  onClick={() => onDeleteScreenClick(screen.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteScreenClick(screen.id);
+                  }}
                   aria-label={`Delete ${screen.name}`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -51,13 +60,8 @@ export default function Navigation({
                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                   </svg>
                 </button>
-              </>
-            )}
-            <button
-              className={`screen-tab ${screen.id === currentScreenId ? 'active' : ''}`}
-              onClick={() => onScreenChange(screen.id)}
-            >
-              {screen.name}
+              </div>
+              <span className="screen-tab-text">{screen.name}</span>
             </button>
           </div>
         ))}

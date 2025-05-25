@@ -27,8 +27,7 @@
 
 .screen-tab {
   flex: 0 0 auto;
-  padding: var(--spacing-sm) var(--spacing-md);
-  padding-left: 4.5rem; /* Make room for edit and delete buttons on the left */
+  padding: var(--spacing-md) var(--spacing-xl);
   background-color: var(--color-surface);
   border: none;
   border-radius: var(--border-radius);
@@ -39,64 +38,86 @@
   cursor: pointer;
   white-space: nowrap;
   transition: background-color var(--transition-quick), box-shadow var(--transition-quick);
+  position: relative;
+  overflow: visible;
+  min-width: 140px;
+}
+
+.screen-tab-text {
+  position: relative;
+  z-index: 1;
+  padding: 0 var(--spacing-lg);
 }
 
 .screen-tab.active {
   background-color: var(--color-primary);
   color: white;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  padding-right: var(--spacing-md);
-  padding-left: 4.5rem; /* Consistent left padding for edit button */
 }
 
 .screen-tab:not(.active):hover {
   background-color: #eaecef;
 }
 
+.screen-actions {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--spacing-sm);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.screen-tab:hover .screen-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .edit-screen-button,
 .delete-screen-button {
-  position: absolute;
-  border: none;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   border-radius: 50%;
-  width: 1.75rem;
-  height: 1.75rem;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.875rem;
   color: white;
+  background-color: rgba(255, 255, 255, 0.2);
   cursor: pointer;
-  opacity: 0.8;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  z-index: 2;
-  background: rgba(255, 255, 255, 0.2);
+  transform: scale(0.9);
+  margin: 0 var(--spacing-xs);
+  pointer-events: auto;
 }
 
-.edit-screen-button {
-  left: var(--spacing-xs);
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.delete-screen-button {
-  left: calc(var(--spacing-xs) + 2rem);
-  top: 50%;
-  transform: translateY(-50%);
+.screen-tab:not(.active) .edit-screen-button,
+.screen-tab:not(.active) .delete-screen-button {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: var(--color-text);
 }
 
 .edit-screen-button:hover,
 .delete-screen-button:hover {
-  opacity: 1;
-  transform: translateY(-50%) scale(1.05);
+  transform: scale(1.1);
 }
 
 .edit-screen-button:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.3);
 }
 
 .delete-screen-button:hover {
-  background: var(--color-error);
+  background-color: var(--color-error);
 }
 
 .navigation-actions {
@@ -135,8 +156,7 @@
   
   .screen-tab {
     font-size: 1rem;
-    padding: var(--spacing-sm) var(--spacing-lg);
-    padding-left: 4.5rem;
+    padding: var(--spacing-md) var(--spacing-xl);
   }
   
   .add-screen-button,
@@ -146,8 +166,7 @@
   
   .edit-screen-button,
   .delete-screen-button {
-    width: 1.75rem;
-    height: 1.75rem;
-    font-size: 0.875rem;
+    width: 36px;
+    height: 36px;
   }
 } 

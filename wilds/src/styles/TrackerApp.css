@@ -14,7 +14,8 @@
   color: white;
 }
 
-.back-button {
+.back-button,
+.journal-button {
   background: none;
   border: none;
   color: white;
@@ -26,10 +27,18 @@
   border-radius: 50%;
   cursor: pointer;
   transition: background-color var(--transition-quick);
+}
+
+.back-button {
   margin-right: var(--spacing-md);
 }
 
-.back-button:hover {
+.journal-button {
+  margin-left: var(--spacing-md);
+}
+
+.back-button:hover,
+.journal-button:hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -40,7 +49,6 @@
   margin: 0;
   flex: 1;
   text-align: center;
-  margin-right: 40px; /* Balance the back button */
 }
 
 .tracker-content {

@@ -9,6 +9,7 @@ export interface ButtonData {
 export interface ClickRecord {
   timestamp: number;
   date: string;
+  isDecrement?: boolean;
 }
 
 export interface Screen {
