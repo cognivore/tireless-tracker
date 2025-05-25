@@ -7,7 +7,10 @@ import EditScreenName from './EditScreenName';
 import EditButtonName from './EditButtonName';
 import ArchiveManager from './ArchiveManager';
 import ActivityJournal from './ActivityJournal';
+import ShareDialog from './ShareDialog';
+import RenameTracker from './RenameTracker';
 import * as storageService from '../services/storageService';
+import { compressState } from '../utils/compressionUtils';
 import type { AppState } from '../types';
 import '../styles/TrackerApp.css';
 
@@ -23,6 +26,8 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
   const [editingButtonId, setEditingButtonId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
   const [showJournal, setShowJournal] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Load data on mount
@@ -127,6 +132,36 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
     setAppState(newState);
   };
 
+  const handleShare = () => {
+    setShowShareDialog(true);
+  };
+  
+  const getShareableUrl = (): string => {
+    if (!appState) return '';
+    
+    // Compress the state to a URL-safe string
+    const compressedState = compressState(appState);
+    
+    // Create the URL with the compressed state
+    const baseUrl = window.location.origin + window.location.pathname;
+    const url = new URL(baseUrl);
+    
+    // Add the compressed state as a parameter
+    url.searchParams.set('import', compressedState);
+    
+    return url.toString();
+  };
+  
+  const handleRenameTracker = (newName: string) => {
+    if (!appState) return;
+    
+    const updatedState = storageService.renameTracker(appState.trackerId, newName);
+    if (updatedState) {
+      setAppState(updatedState);
+    }
+    setShowRenameDialog(false);
+  };
+
   const currentScreen = appState.screens.find(s => s.id === appState.currentScreenId);
   const editingScreen = editingScreenId ? appState.screens.find(s => s.id === editingScreenId) : null;
   const hasArchivedItems = storageService.hasArchivedItems(appState);
@@ -149,16 +184,32 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
             <path d="M12 19l-7-7 7-7"></path>
           </svg>
         </button>
-        <h1 className="tracker-title">{appState.trackerName}</h1>
-        <button className="journal-button" onClick={() => setShowJournal(true)}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-            <polyline points="10 9 9 9 8 9"></polyline>
+        <div className="tracker-title-container" onClick={() => setShowRenameDialog(true)}>
+          <h1 className="tracker-title">{appState.trackerName}</h1>
+          <svg className="edit-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
           </svg>
-        </button>
+        </div>
+        <div className="header-actions">
+          <button className="share-button" onClick={handleShare}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+          </button>
+          <button className="journal-button" onClick={() => setShowJournal(true)}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </button>
+        </div>
       </header>
       
       <Navigation 
@@ -226,6 +277,21 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
         <ActivityJournal
           appState={appState}
           onClose={() => setShowJournal(false)}
+        />
+      )}
+      
+      {showShareDialog && (
+        <ShareDialog
+          shareUrl={getShareableUrl()}
+          onClose={() => setShowShareDialog(false)}
+        />
+      )}
+      
+      {showRenameDialog && (
+        <RenameTracker
+          currentName={appState.trackerName}
+          onRename={handleRenameTracker}
+          onCancel={() => setShowRenameDialog(false)}
         />
       )}
     </div>

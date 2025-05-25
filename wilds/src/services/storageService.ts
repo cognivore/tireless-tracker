@@ -383,4 +383,55 @@ export const deleteButtonPermanently = (state: AppState, screenId: string, butto
   
   saveData(newState);
   return newState;
+};
+
+/**
+ * Checks if a tracker with the given ID already exists
+ */
+export const trackerExists = (trackerId: string): boolean => {
+  return (
+    localStorage.getItem(`${STORAGE_KEY_PREFIX}${trackerId}`) !== null ||
+    localStorage.getItem(`${ARCHIVE_KEY_PREFIX}${trackerId}`) !== null
+  );
+};
+
+/**
+ * Imports a tracker state
+ * If overwrite is true, it will replace any existing tracker with the same ID
+ */
+export const importTracker = (importedState: AppState, overwrite: boolean = false): boolean => {
+  try {
+    // Check if tracker already exists
+    if (!overwrite && trackerExists(importedState.trackerId)) {
+      return false;
+    }
+    
+    // Save the imported tracker
+    saveData(importedState);
+    return true;
+  } catch (error) {
+    console.error('Failed to import tracker', error);
+    return false;
+  }
+};
+
+/**
+ * Renames a tracker
+ */
+export const renameTracker = (trackerId: string, newName: string): AppState | null => {
+  try {
+    const data = loadData(trackerId);
+    if (!data) return null;
+    
+    const updatedData = {
+      ...data,
+      trackerName: newName.trim()
+    };
+    
+    saveData(updatedData);
+    return updatedData;
+  } catch (error) {
+    console.error('Failed to rename tracker', error);
+    return null;
+  }
 }; 

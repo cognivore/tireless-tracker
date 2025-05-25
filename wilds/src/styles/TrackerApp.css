@@ -113,4 +113,52 @@
   .tracker-content {
     padding: var(--spacing-lg);
   }
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.share-button, .journal-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.share-button:hover, .journal-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.tracker-title-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 20px;
+  transition: background-color 0.2s;
+}
+
+.tracker-title-container:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.edit-icon {
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.tracker-title-container:hover .edit-icon {
+  opacity: 1;
 } 
