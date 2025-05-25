@@ -1,54 +1,65 @@
-# React + TypeScript + Vite
+# Tireless Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A beautiful, mobile-friendly activity tracking application that helps you count and track daily activities.
 
-Currently, two official plugins are available:
+![Tireless Tracker](https://user-images.githubusercontent.com/your-username/tireless-tracker/main/screenshot.png)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## Expanding the ESLint configuration
+- **Multiple Screens**: Organize your tracking buttons across different screens
+- **Beautiful UI**: Minimal, typography-focused design optimized for mobile
+- **Click Tracking**: Track clicks with timestamps and daily counts
+- **Activity Journal**: View your activity history with filtering options
+- **Double-Click to Decrement**: Easily fix accidental clicks
+- **Archive System**: Archive and restore screens, buttons, and trackers
+- **Persistent Storage**: All data is saved locally in your browser
+- **Multi-Tracker Support**: Create multiple trackers for different purposes
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Getting Started
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+Visit the [live demo](https://your-username.github.io/tireless-tracker/) to try it out!
+
+### Installation
+
+If you'd like to run it locally:
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/tireless-tracker.git
+
+# Navigate to the project directory
+cd tireless-tracker/wilds
+
+# Install dependencies
+pnpm install
+
+# Start the development server
+pnpm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Technologies
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- React 19
+- TypeScript
+- Vite
+- CSS with custom properties
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+## Development
+
+This project was built with Vite and uses pnpm as the package manager.
+
+```bash
+# Build for production
+pnpm build
+
+# Preview the production build
+pnpm preview
 ```
+
+## License
+
+MIT
+
+## Contact
+
+Your Name - your.email@example.com

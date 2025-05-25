@@ -9,7 +9,9 @@ function App() {
 
   // Check for tracker ID in URL on initial load
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    // Handle GitHub Pages path (might include base path)
+    const url = new URL(window.location.href);
+    const params = new URLSearchParams(url.search);
     const trackerId = params.get('id');
     if (trackerId) {
       // Check if the tracker exists and load it

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { AppState, ButtonData, Screen, ClickRecord } from '../types';
+import type { AppState } from '../types';
 import '../styles/ActivityJournal.css';
 
 interface ActivityJournalProps {

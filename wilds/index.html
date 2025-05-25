@@ -7,6 +7,33 @@
     <meta name="theme-color" content="#3a86ff" />
     <meta name="description" content="Track your daily activities with this button tracker app" />
     <title>Tracker | Count Your Daily Activities</title>
+    
+    <!-- Handle GitHub Pages routing -->
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages
+      // Check if we need to redirect from a GitHub Pages 404 redirect
+      (function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const path = urlParams.get('path');
+        
+        if (path) {
+          // Remove the path parameter
+          urlParams.delete('path');
+          
+          // Build the new URL
+          let newUrl = window.location.pathname;
+          if (urlParams.toString()) {
+            newUrl += '?' + urlParams.toString();
+          }
+          if (window.location.hash) {
+            newUrl += window.location.hash;
+          }
+          
+          // Replace the current URL without refreshing the page
+          window.history.replaceState({}, '', newUrl);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
