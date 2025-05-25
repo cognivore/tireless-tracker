@@ -1,0 +1,13 @@
+# Rust specific ignores
+target/
+
+# Nix specific ignores
+.direnv/
+result/
+
+# Secrets
+**/conf/deployment.rs
+
+# Database
+db/*
+!db/dirty-sync.sh

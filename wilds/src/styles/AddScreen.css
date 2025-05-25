@@ -1,0 +1,81 @@
+.add-screen-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--spacing-md);
+}
+
+.add-screen-modal {
+  background-color: white;
+  border-radius: var(--border-radius);
+  padding: var(--spacing-lg);
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.add-screen-modal h2 {
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-lg);
+  color: var(--color-text);
+  text-align: center;
+}
+
+.add-screen-input {
+  width: 100%;
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  font-family: var(--font-family);
+  font-size: 1rem;
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius);
+}
+
+.add-screen-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.add-screen-controls {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.add-screen-submit,
+.add-screen-cancel {
+  flex: 1;
+  padding: var(--spacing-md);
+  border: none;
+  border-radius: var(--border-radius);
+  font-family: var(--font-family);
+  font-size: 1rem;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background-color var(--transition-quick);
+}
+
+.add-screen-submit {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.add-screen-submit:hover {
+  background-color: #2e77f0;
+}
+
+.add-screen-cancel {
+  background-color: #f1f3f5;
+  color: var(--color-text);
+}
+
+.add-screen-cancel:hover {
+  background-color: #e9ecef;
+} 
