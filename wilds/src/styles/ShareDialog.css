@@ -1,0 +1,97 @@
+.share-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.share-dialog {
+  background-color: white;
+  border-radius: 16px;
+  padding: 24px;
+  width: 85%;
+  max-width: 500px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.share-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.share-header h2 {
+  margin: 0;
+  color: var(--primary-color, #3a86ff);
+  font-size: 1.5rem;
+}
+
+.share-close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.share-close-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.share-content p {
+  margin-top: 0;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.share-url-container {
+  display: flex;
+  margin-bottom: 16px;
+}
+
+.share-url-input {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 24px 0 0 24px;
+  font-size: 0.9rem;
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.share-copy-button {
+  padding: 12px 16px;
+  background-color: var(--primary-color, #3a86ff);
+  color: white;
+  border: none;
+  border-radius: 0 24px 24px 0;
+  cursor: pointer;
+  font-weight: 500;
+  min-width: 80px;
+  transition: background-color 0.2s;
+}
+
+.share-copy-button:hover {
+  background-color: var(--primary-dark, #2a75ee);
+}
+
+.share-note {
+  color: #666;
+  font-size: 0.9rem;
+} 
