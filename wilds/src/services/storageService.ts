@@ -1,4 +1,4 @@
-import type { AppState, ButtonData, ClickRecord, Screen } from '../types';
+import type { AppState, ButtonData, Screen } from '../types';
 
 const STORAGE_KEY_PREFIX = 'wilds_tracker_';
 const ARCHIVE_KEY_PREFIX = 'wilds_archive_';

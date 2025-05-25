@@ -1,4 +1,4 @@
-import type { AppState, Screen, ButtonData } from '../types';
+import type { AppState } from '../types';
 import '../styles/ArchiveManager.css';
 
 interface ArchiveManagerProps {
