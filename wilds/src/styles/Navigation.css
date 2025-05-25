@@ -19,9 +19,16 @@
   display: none;
 }
 
+.screen-tab-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .screen-tab {
   flex: 0 0 auto;
   padding: var(--spacing-sm) var(--spacing-md);
+  padding-left: 2.5rem; /* Make room for edit button on the left */
   background-color: var(--color-surface);
   border: none;
   border-radius: var(--border-radius);
@@ -31,16 +38,48 @@
   color: var(--color-text);
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color var(--transition-quick);
+  transition: background-color var(--transition-quick), box-shadow var(--transition-quick);
 }
 
 .screen-tab.active {
   background-color: var(--color-primary);
   color: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  padding-right: var(--spacing-md);
+  padding-left: 2.5rem; /* Consistent left padding for edit button */
 }
 
 .screen-tab:not(.active):hover {
   background-color: #eaecef;
+}
+
+.edit-screen-button {
+  position: absolute;
+  left: var(--spacing-xs);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: white;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  z-index: 2;
+}
+
+.edit-screen-button:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transform: translateY(-50%) scale(1.05);
 }
 
 .add-screen-button {
@@ -72,5 +111,11 @@
   
   .add-screen-button {
     font-size: 1rem;
+  }
+  
+  .edit-screen-button {
+    width: 1.75rem;
+    height: 1.75rem;
+    font-size: 0.875rem;
   }
 } 

@@ -17,6 +17,8 @@ export interface Screen {
 }
 
 export interface AppState {
+  trackerId: string;
+  trackerName: string;
   screens: Screen[];
   currentScreenId: string;
 } 

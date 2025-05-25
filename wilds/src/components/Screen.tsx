@@ -6,9 +6,17 @@ interface ScreenProps {
   screen: ScreenType;
   onButtonClick: (buttonId: string) => void;
   onButtonDoubleClick: (buttonId: string) => void;
+  onButtonEdit: (buttonId: string) => void;
+  onButtonDelete: (buttonId: string) => void;
 }
 
-export default function Screen({ screen, onButtonClick, onButtonDoubleClick }: ScreenProps) {
+export default function Screen({ 
+  screen, 
+  onButtonClick, 
+  onButtonDoubleClick,
+  onButtonEdit,
+  onButtonDelete
+}: ScreenProps) {
   return (
     <div className="screen">
       <div className="screen-name">{screen.name}</div>
@@ -19,6 +27,8 @@ export default function Screen({ screen, onButtonClick, onButtonDoubleClick }: S
             data={button}
             onClick={() => onButtonClick(button.id)}
             onDoubleClick={() => onButtonDoubleClick(button.id)}
+            onEditClick={onButtonEdit}
+            onDeleteClick={onButtonDelete}
           />
         ))}
       </div>

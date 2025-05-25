@@ -1,85 +1,54 @@
 import { useState, useEffect } from 'react';
-import Navigation from './components/Navigation';
-import Screen from './components/Screen';
-import AddButton from './components/AddButton';
-import AddScreen from './components/AddScreen';
-import * as storageService from './services/storageService';
-import type { AppState, Screen as ScreenType } from './types';
+import HomePage from './components/HomePage';
+import TrackerApp from './components/TrackerApp';
 import './App.css';
 
 function App() {
-  const [appState, setAppState] = useState<AppState>({ screens: [], currentScreenId: '' });
-  const [showAddScreen, setShowAddScreen] = useState(false);
-  
-  // Load data on mount
+  const [currentTrackerId, setCurrentTrackerId] = useState<string | null>(null);
+
+  // Check for tracker ID in URL on initial load
   useEffect(() => {
-    const data = storageService.loadData();
-    setAppState(data);
+    const params = new URLSearchParams(window.location.search);
+    const trackerId = params.get('id');
+    if (trackerId) {
+      setCurrentTrackerId(trackerId);
+    }
   }, []);
 
-  const handleButtonClick = (buttonId: string) => {
-    const newState = storageService.addClick(appState, appState.currentScreenId, buttonId);
-    setAppState(newState);
+  // Update URL when tracker changes
+  useEffect(() => {
+    if (currentTrackerId) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('id', currentTrackerId);
+      window.history.pushState({}, '', url);
+    } else {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('id');
+      window.history.pushState({}, '', url);
+    }
+  }, [currentTrackerId]);
+
+  const handleTrackerCreate = (trackerId: string) => {
+    setCurrentTrackerId(trackerId);
   };
 
-  const handleButtonDoubleClick = (buttonId: string) => {
-    const newState = storageService.decrementClick(appState, appState.currentScreenId, buttonId);
-    setAppState(newState);
+  const handleTrackerSelect = (trackerId: string) => {
+    setCurrentTrackerId(trackerId);
   };
 
-  const handleScreenChange = (screenId: string) => {
-    setAppState({ ...appState, currentScreenId: screenId });
+  const handleBackToHome = () => {
+    setCurrentTrackerId(null);
   };
 
-  const handleAddButton = (buttonText: string) => {
-    const newState = storageService.addButton(appState, appState.currentScreenId, buttonText);
-    setAppState(newState);
-  };
-
-  const handleAddScreen = (screenName: string) => {
-    const newState = storageService.addScreen(appState, screenName);
-    setAppState({ ...newState, currentScreenId: newState.screens[newState.screens.length - 1].id });
-    setShowAddScreen(false);
-  };
-
-  const currentScreen = appState.screens.find(s => s.id === appState.currentScreenId);
-
-  if (!currentScreen) {
-    return <div className="loading">Loading...</div>;
+  if (currentTrackerId) {
+    return <TrackerApp trackerId={currentTrackerId} onBack={handleBackToHome} />;
   }
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1 className="app-title">Tracker</h1>
-      </header>
-      
-      <Navigation 
-        screens={appState.screens}
-        currentScreenId={appState.currentScreenId}
-        onScreenChange={handleScreenChange}
-        onAddScreenClick={() => setShowAddScreen(true)}
-      />
-      
-      <main className="app-content">
-        <Screen 
-          screen={currentScreen}
-          onButtonClick={handleButtonClick}
-          onButtonDoubleClick={handleButtonDoubleClick}
-        />
-        
-        <div className="add-button-container">
-          <AddButton onAdd={handleAddButton} />
-        </div>
-      </main>
-
-      {showAddScreen && (
-        <AddScreen 
-          onAdd={handleAddScreen} 
-          onCancel={() => setShowAddScreen(false)} 
-        />
-      )}
-    </div>
+    <HomePage 
+      onTrackerCreate={handleTrackerCreate} 
+      onTrackerSelect={handleTrackerSelect} 
+    />
   );
 }
 

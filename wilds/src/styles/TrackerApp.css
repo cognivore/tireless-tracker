@@ -1,0 +1,108 @@
+.tracker-app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 100%;
+  width: 100%;
+}
+
+.tracker-header {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-md);
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.back-button {
+  background: none;
+  border: none;
+  color: white;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color var(--transition-quick);
+  margin-right: var(--spacing-md);
+}
+
+.back-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.tracker-title {
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.02em;
+  margin: 0;
+  flex: 1;
+  text-align: center;
+  margin-right: 40px; /* Balance the back button */
+}
+
+.tracker-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  padding: var(--spacing-md);
+}
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  padding: var(--spacing-lg);
+  text-align: center;
+}
+
+.error-container h2 {
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-md);
+}
+
+.error-container p {
+  margin-bottom: var(--spacing-lg);
+  color: var(--color-text);
+  opacity: 0.8;
+}
+
+.error-container .back-button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color var(--transition-quick);
+  width: auto;
+  height: auto;
+  margin: 0;
+}
+
+.error-container .back-button:hover {
+  background-color: #2e77f0;
+}
+
+@media (min-width: 768px) {
+  .tracker-header {
+    padding: var(--spacing-lg);
+  }
+  
+  .tracker-title {
+    font-size: 1.75rem;
+  }
+  
+  .tracker-content {
+    padding: var(--spacing-lg);
+  }
+} 
