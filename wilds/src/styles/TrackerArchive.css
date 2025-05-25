@@ -1,0 +1,15 @@
+/* Reuse archive styles from ArchiveManager.css */
+.archive-view-button {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color var(--transition-quick);
+  background-color: var(--color-tertiary);
+  color: white;
+}
+
+.archive-view-button:hover {
+  background-color: #6d2fdd;
+} 

@@ -17,21 +17,31 @@ export default function Screen({
   onButtonEdit,
   onButtonDelete
 }: ScreenProps) {
+  // Filter out archived buttons
+  const activeButtons = screen.buttons.filter(button => !button.archived);
+
   return (
     <div className="screen">
       <div className="screen-name">{screen.name}</div>
-      <div className="buttons-grid">
-        {screen.buttons.map(button => (
-          <Button
-            key={button.id}
-            data={button}
-            onClick={() => onButtonClick(button.id)}
-            onDoubleClick={() => onButtonDoubleClick(button.id)}
-            onEditClick={onButtonEdit}
-            onDeleteClick={onButtonDelete}
-          />
-        ))}
-      </div>
+      {activeButtons.length > 0 ? (
+        <div className="buttons-grid">
+          {activeButtons.map(button => (
+            <Button
+              key={button.id}
+              data={button}
+              onClick={() => onButtonClick(button.id)}
+              onDoubleClick={() => onButtonDoubleClick(button.id)}
+              onEditClick={onButtonEdit}
+              onDeleteClick={onButtonDelete}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="empty-screen">
+          <p>No buttons on this screen yet.</p>
+          <p className="empty-screen-help">Click "+ Add Button" below to create one.</p>
+        </div>
+      )}
     </div>
   );
 } 

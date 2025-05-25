@@ -3,6 +3,7 @@ export interface ButtonData {
   text: string;
   count: number;
   clicks: ClickRecord[];
+  archived?: boolean;
 }
 
 export interface ClickRecord {
@@ -14,6 +15,7 @@ export interface Screen {
   id: string;
   name: string;
   buttons: ButtonData[];
+  archived?: boolean;
 }
 
 export interface AppState {
@@ -21,4 +23,5 @@ export interface AppState {
   trackerName: string;
   screens: Screen[];
   currentScreenId: string;
+  archived?: boolean;
 } 

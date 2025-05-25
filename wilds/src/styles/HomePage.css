@@ -32,12 +32,35 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.trackers-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
 .trackers-title {
   font-size: 1.5rem;
   font-weight: var(--font-weight-bold);
-  margin-bottom: var(--spacing-lg);
   color: var(--color-text);
-  text-align: center;
+  margin: 0;
+}
+
+.view-archive-button {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--color-tertiary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  font-family: var(--font-family);
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background-color var(--transition-quick);
+}
+
+.view-archive-button:hover {
+  background-color: #6d2fdd;
 }
 
 .trackers-list {
@@ -45,6 +68,11 @@
   flex-direction: column;
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-lg);
+}
+
+.tracker-item-container {
+  position: relative;
+  margin-bottom: var(--spacing-sm);
 }
 
 .tracker-item {
@@ -60,6 +88,7 @@
   text-align: left;
   font-family: var(--font-family);
   font-size: 1rem;
+  width: 100%;
 }
 
 .tracker-item:hover {
@@ -157,6 +186,36 @@
 
 .create-tracker-cancel:hover {
   background-color: #e9ecef;
+}
+
+.archive-tracker-button {
+  position: absolute;
+  top: 50%;
+  right: -10px;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #eee;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 2;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--transition-quick), background-color var(--transition-quick);
+}
+
+.tracker-item-container:hover .archive-tracker-button {
+  opacity: 1;
+}
+
+.archive-tracker-button:hover {
+  background-color: var(--color-error);
+  color: white;
 }
 
 @media (min-width: 768px) {

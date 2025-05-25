@@ -1,6 +1,7 @@
 import type { AppState, ButtonData, ClickRecord, Screen } from '../types';
 
 const STORAGE_KEY_PREFIX = 'wilds_tracker_';
+const ARCHIVE_KEY_PREFIX = 'wilds_archive_';
 
 const getDefaultState = (trackerName: string): AppState => {
   const defaultScreen: Screen = {
@@ -26,13 +27,21 @@ const getDefaultState = (trackerName: string): AppState => {
     trackerId: crypto.randomUUID(),
     trackerName,
     screens: [defaultScreen],
-    currentScreenId: defaultScreen.id
+    currentScreenId: defaultScreen.id,
+    archived: false
   };
 };
 
 export const loadData = (trackerId: string): AppState | null => {
   try {
-    const data = localStorage.getItem(`${STORAGE_KEY_PREFIX}${trackerId}`);
+    // First try to load from active trackers
+    let data = localStorage.getItem(`${STORAGE_KEY_PREFIX}${trackerId}`);
+    
+    // If not found, try to load from archived trackers
+    if (!data) {
+      data = localStorage.getItem(`${ARCHIVE_KEY_PREFIX}${trackerId}`);
+    }
+    
     if (data) {
       return JSON.parse(data);
     }
@@ -45,7 +54,8 @@ export const loadData = (trackerId: string): AppState | null => {
 
 export const saveData = (data: AppState): void => {
   try {
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}${data.trackerId}`, JSON.stringify(data));
+    const prefix = data.archived ? ARCHIVE_KEY_PREFIX : STORAGE_KEY_PREFIX;
+    localStorage.setItem(`${prefix}${data.trackerId}`, JSON.stringify(data));
   } catch (error) {
     console.error('Failed to save data to localStorage', error);
   }
@@ -57,10 +67,11 @@ export const createTracker = (trackerName: string): AppState => {
   return newState;
 };
 
-export const getTrackersList = (): { id: string, name: string }[] => {
-  const trackers: { id: string, name: string }[] = [];
+export const getTrackersList = (): { id: string, name: string, archived: boolean }[] => {
+  const trackers: { id: string, name: string, archived: boolean }[] = [];
   
   try {
+    // Get active trackers
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && key.startsWith(STORAGE_KEY_PREFIX)) {
@@ -70,7 +81,19 @@ export const getTrackersList = (): { id: string, name: string }[] => {
           const trackerData = JSON.parse(data) as AppState;
           trackers.push({
             id: trackerId,
-            name: trackerData.trackerName
+            name: trackerData.trackerName,
+            archived: false
+          });
+        }
+      } else if (key && key.startsWith(ARCHIVE_KEY_PREFIX)) {
+        const trackerId = key.substring(ARCHIVE_KEY_PREFIX.length);
+        const data = localStorage.getItem(key);
+        if (data) {
+          const trackerData = JSON.parse(data) as AppState;
+          trackers.push({
+            id: trackerId,
+            name: trackerData.trackerName,
+            archived: true
           });
         }
       }
@@ -157,32 +180,50 @@ export const addScreen = (state: AppState, screenName: string): AppState => {
   return newState;
 };
 
-export const removeButton = (state: AppState, screenId: string, buttonId: string): AppState => {
-  const newState = { ...state };
-  const screen = newState.screens.find(s => s.id === screenId);
+export const removeScreen = (state: AppState, screenId: string): AppState => {
+  // Don't remove if it's the last non-archived screen
+  const activeScreens = state.screens.filter(s => !s.archived);
+  if (activeScreens.length <= 1 && activeScreens.some(s => s.id === screenId)) {
+    return state;
+  }
   
-  if (screen) {
-    screen.buttons = screen.buttons.filter(b => b.id !== buttonId);
+  return archiveScreen(state, screenId);
+};
+
+export const archiveScreen = (state: AppState, screenId: string): AppState => {
+  const newState = { ...state };
+  const screenIndex = newState.screens.findIndex(s => s.id === screenId);
+  
+  if (screenIndex !== -1) {
+    // Mark the screen as archived
+    newState.screens[screenIndex] = {
+      ...newState.screens[screenIndex],
+      archived: true
+    };
+    
+    // Update current screen if the archived screen was active
+    if (newState.currentScreenId === screenId) {
+      const activeScreen = newState.screens.find(s => !s.archived);
+      if (activeScreen) {
+        newState.currentScreenId = activeScreen.id;
+      }
+    }
   }
   
   saveData(newState);
   return newState;
 };
 
-export const removeScreen = (state: AppState, screenId: string): AppState => {
-  // Don't remove if it's the last screen
-  if (state.screens.length <= 1) {
-    return state;
-  }
+export const unarchiveScreen = (state: AppState, screenId: string): AppState => {
+  const newState = { ...state };
+  const screenIndex = newState.screens.findIndex(s => s.id === screenId);
   
-  const newState = {
-    ...state,
-    screens: state.screens.filter(s => s.id !== screenId)
-  };
-  
-  // Update current screen if the removed screen was active
-  if (newState.currentScreenId === screenId) {
-    newState.currentScreenId = newState.screens[0].id;
+  if (screenIndex !== -1) {
+    // Mark the screen as not archived
+    newState.screens[screenIndex] = {
+      ...newState.screens[screenIndex],
+      archived: false
+    };
   }
   
   saveData(newState);
@@ -210,6 +251,124 @@ export const renameButton = (state: AppState, screenId: string, buttonId: string
     if (button && newName.trim()) {
       button.text = newName.trim();
     }
+  }
+  
+  saveData(newState);
+  return newState;
+};
+
+export const removeButton = (state: AppState, screenId: string, buttonId: string): AppState => {
+  return archiveButton(state, screenId, buttonId);
+};
+
+export const archiveButton = (state: AppState, screenId: string, buttonId: string): AppState => {
+  const newState = { ...state };
+  const screen = newState.screens.find(s => s.id === screenId);
+  
+  if (screen) {
+    const buttonIndex = screen.buttons.findIndex(b => b.id === buttonId);
+    if (buttonIndex !== -1) {
+      // Mark the button as archived
+      screen.buttons[buttonIndex] = {
+        ...screen.buttons[buttonIndex],
+        archived: true
+      };
+    }
+  }
+  
+  saveData(newState);
+  return newState;
+};
+
+export const unarchiveButton = (state: AppState, screenId: string, buttonId: string): AppState => {
+  const newState = { ...state };
+  const screen = newState.screens.find(s => s.id === screenId);
+  
+  if (screen) {
+    const buttonIndex = screen.buttons.findIndex(b => b.id === buttonId);
+    if (buttonIndex !== -1) {
+      // Mark the button as not archived
+      screen.buttons[buttonIndex] = {
+        ...screen.buttons[buttonIndex],
+        archived: false
+      };
+    }
+  }
+  
+  saveData(newState);
+  return newState;
+};
+
+export const hasArchivedItems = (state: AppState): boolean => {
+  return state.screens.some(screen => 
+    screen.archived || screen.buttons.some(button => button.archived)
+  );
+};
+
+export const archiveTracker = (trackerId: string): void => {
+  try {
+    const data = localStorage.getItem(`${STORAGE_KEY_PREFIX}${trackerId}`);
+    if (data) {
+      const trackerData = JSON.parse(data) as AppState;
+      trackerData.archived = true;
+      
+      // Remove from active trackers
+      localStorage.removeItem(`${STORAGE_KEY_PREFIX}${trackerId}`);
+      
+      // Add to archived trackers
+      localStorage.setItem(`${ARCHIVE_KEY_PREFIX}${trackerId}`, JSON.stringify(trackerData));
+    }
+  } catch (error) {
+    console.error('Failed to archive tracker', error);
+  }
+};
+
+export const unarchiveTracker = (trackerId: string): void => {
+  try {
+    const data = localStorage.getItem(`${ARCHIVE_KEY_PREFIX}${trackerId}`);
+    if (data) {
+      const trackerData = JSON.parse(data) as AppState;
+      trackerData.archived = false;
+      
+      // Remove from archived trackers
+      localStorage.removeItem(`${ARCHIVE_KEY_PREFIX}${trackerId}`);
+      
+      // Add to active trackers
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}${trackerId}`, JSON.stringify(trackerData));
+    }
+  } catch (error) {
+    console.error('Failed to unarchive tracker', error);
+  }
+};
+
+export const deleteTrackerPermanently = (trackerId: string): void => {
+  try {
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX}${trackerId}`);
+    localStorage.removeItem(`${ARCHIVE_KEY_PREFIX}${trackerId}`);
+  } catch (error) {
+    console.error('Failed to delete tracker permanently', error);
+  }
+};
+
+export const deleteScreenPermanently = (state: AppState, screenId: string): AppState => {
+  const newState = { ...state };
+  newState.screens = newState.screens.filter(s => s.id !== screenId);
+  
+  // Update current screen if the deleted screen was active
+  if (newState.currentScreenId === screenId && newState.screens.length > 0) {
+    newState.currentScreenId = newState.screens[0].id;
+  }
+  
+  saveData(newState);
+  return newState;
+};
+
+export const deleteButtonPermanently = (state: AppState, screenId: string, buttonId: string): AppState => {
+  const newState = { ...state };
+  const screen = newState.screens.find(s => s.id === screenId);
+  
+  if (screen) {
+    screen.buttons = screen.buttons.filter(b => b.id !== buttonId);
   }
   
   saveData(newState);

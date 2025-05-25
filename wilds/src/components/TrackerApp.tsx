@@ -5,6 +5,7 @@ import AddButton from './AddButton';
 import AddScreen from './AddScreen';
 import EditScreenName from './EditScreenName';
 import EditButtonName from './EditButtonName';
+import ArchiveManager from './ArchiveManager';
 import * as storageService from '../services/storageService';
 import type { AppState } from '../types';
 import '../styles/TrackerApp.css';
@@ -19,6 +20,7 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
   const [showAddScreen, setShowAddScreen] = useState(false);
   const [editingScreenId, setEditingScreenId] = useState<string | null>(null);
   const [editingButtonId, setEditingButtonId] = useState<string | null>(null);
+  const [showArchive, setShowArchive] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Load data on mount
@@ -79,6 +81,13 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
     setEditingScreenId(null);
   };
   
+  const handleDeleteScreenClick = (screenId: string) => {
+    if (confirm('Are you sure you want to archive this screen?')) {
+      const newState = storageService.archiveScreen(appState, screenId);
+      setAppState(newState);
+    }
+  };
+  
   const handleEditButtonClick = (buttonId: string) => {
     setEditingButtonId(buttonId);
   };
@@ -90,14 +99,35 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
   };
   
   const handleDeleteButton = (buttonId: string) => {
-    if (confirm('Are you sure you want to delete this button?')) {
-      const newState = storageService.removeButton(appState, appState.currentScreenId, buttonId);
+    if (confirm('Are you sure you want to archive this button?')) {
+      const newState = storageService.archiveButton(appState, appState.currentScreenId, buttonId);
       setAppState(newState);
     }
+  };
+  
+  const handleUnarchiveScreen = (screenId: string) => {
+    const newState = storageService.unarchiveScreen(appState, screenId);
+    setAppState(newState);
+  };
+  
+  const handleUnarchiveButton = (screenId: string, buttonId: string) => {
+    const newState = storageService.unarchiveButton(appState, screenId, buttonId);
+    setAppState(newState);
+  };
+  
+  const handleDeleteScreenPermanently = (screenId: string) => {
+    const newState = storageService.deleteScreenPermanently(appState, screenId);
+    setAppState(newState);
+  };
+  
+  const handleDeleteButtonPermanently = (screenId: string, buttonId: string) => {
+    const newState = storageService.deleteButtonPermanently(appState, screenId, buttonId);
+    setAppState(newState);
   };
 
   const currentScreen = appState.screens.find(s => s.id === appState.currentScreenId);
   const editingScreen = editingScreenId ? appState.screens.find(s => s.id === editingScreenId) : null;
+  const hasArchivedItems = storageService.hasArchivedItems(appState);
   
   let editingButton = null;
   if (editingButtonId && currentScreen) {
@@ -126,6 +156,9 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
         onScreenChange={handleScreenChange}
         onAddScreenClick={() => setShowAddScreen(true)}
         onEditScreenClick={handleEditScreenClick}
+        onDeleteScreenClick={handleDeleteScreenClick}
+        onArchiveClick={() => setShowArchive(true)}
+        hasArchivedItems={hasArchivedItems}
       />
       
       <main className="tracker-content">
@@ -164,6 +197,17 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
           currentName={editingButton.text}
           onRename={handleRenameButton}
           onCancel={() => setEditingButtonId(null)}
+        />
+      )}
+      
+      {showArchive && (
+        <ArchiveManager
+          appState={appState}
+          onUnarchiveScreen={handleUnarchiveScreen}
+          onUnarchiveButton={handleUnarchiveButton}
+          onDeleteScreenPermanently={handleDeleteScreenPermanently}
+          onDeleteButtonPermanently={handleDeleteButtonPermanently}
+          onClose={() => setShowArchive(false)}
         />
       )}
     </div>

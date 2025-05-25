@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import HomePage from './components/HomePage';
 import TrackerApp from './components/TrackerApp';
+import * as storageService from './services/storageService';
 import './App.css';
 
 function App() {
@@ -11,7 +12,11 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const trackerId = params.get('id');
     if (trackerId) {
-      setCurrentTrackerId(trackerId);
+      // Check if the tracker exists and load it
+      const data = storageService.loadData(trackerId);
+      if (data) {
+        setCurrentTrackerId(trackerId);
+      }
     }
   }, []);
 
