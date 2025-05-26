@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import HomePage from './components/HomePage';
 import TrackerApp from './components/TrackerApp';
+import ImportDialog from './components/ImportDialog';
 import ConfirmationDialog from './components/ConfirmationDialog';
 import * as storageService from './services/storageService';
 import { decompressState } from './utils/compressionUtils';
@@ -11,6 +12,7 @@ function App() {
   const [importState, setImportState] = useState<{
     state: any;
     needsConfirmation: boolean;
+    trackerName?: string;
   } | null>(null);
 
   // Check for tracker ID in URL on initial load
@@ -30,14 +32,18 @@ function App() {
         if (decompressedState) {
           // Check if a tracker with this ID already exists
           if (storageService.trackerExists(decompressedState.trackerId)) {
+            // Load the existing tracker to get its name
+            const existingTracker = storageService.loadData(decompressedState.trackerId);
+            
             // Ask for confirmation before overwriting
             setImportState({
               state: decompressedState,
-              needsConfirmation: true
+              needsConfirmation: true,
+              trackerName: existingTracker?.trackerName || 'Unknown Tracker'
             });
           } else {
             // Import directly since it doesn't exist
-            importTracker(decompressedState, false);
+            importTracker(decompressedState, 'new');
           }
           
           // Remove the import parameter from URL
@@ -71,25 +77,37 @@ function App() {
     }
   }, [currentTrackerId]);
   
-  const importTracker = (state: any, overwrite: boolean) => {
+  const importTracker = (state: any, importMethod: 'new' | 'replace' | 'merge') => {
     if (state) {
-      // Import the tracker
-      const success = storageService.importTracker(state, overwrite);
+      let success = false;
+      let updatedState = null;
       
-      if (success) {
+      switch (importMethod) {
+        case 'new':
+          // New tracker (doesn't exist yet)
+          success = storageService.importTracker(state, false);
+          updatedState = state;
+          break;
+        case 'replace':
+          // Replace existing tracker
+          success = storageService.importTracker(state, true);
+          updatedState = state;
+          break;
+        case 'merge':
+          // Merge with existing tracker
+          updatedState = storageService.mergeTrackerState(state);
+          success = !!updatedState;
+          break;
+      }
+      
+      if (success && updatedState) {
         // Switch to the imported tracker
-        setCurrentTrackerId(state.trackerId);
+        setCurrentTrackerId(updatedState.trackerId);
       }
     }
     
     // Clear the import state
     setImportState(null);
-  };
-
-  const handleConfirmImport = () => {
-    if (importState) {
-      importTracker(importState.state, true);
-    }
   };
 
   const handleCancelImport = () => {
@@ -110,11 +128,11 @@ function App() {
 
   return (
     <>
-      {importState?.needsConfirmation && (
-        <ConfirmationDialog
-          title="Import Tracker"
-          message="A tracker with this ID already exists. Do you want to replace it with the imported data?"
-          onConfirm={handleConfirmImport}
+      {importState?.needsConfirmation && importState.trackerName && (
+        <ImportDialog
+          trackerName={importState.trackerName}
+          onReplace={() => importTracker(importState.state, 'replace')}
+          onMerge={() => importTracker(importState.state, 'merge')}
           onCancel={handleCancelImport}
         />
       )}

@@ -1,4 +1,5 @@
 import type { AppState, ButtonData, Screen } from '../types';
+import { mergeTrackerStates } from '../utils/mergeUtils';
 
 const STORAGE_KEY_PREFIX = 'wilds_tracker_';
 const ARCHIVE_KEY_PREFIX = 'wilds_archive_';
@@ -432,6 +433,33 @@ export const renameTracker = (trackerId: string, newName: string): AppState | nu
     return updatedData;
   } catch (error) {
     console.error('Failed to rename tracker', error);
+    return null;
+  }
+};
+
+/**
+ * Merges imported state with existing state
+ */
+export const mergeTrackerState = (importedState: AppState): AppState | null => {
+  try {
+    // Load the existing state
+    const existingState = loadData(importedState.trackerId);
+    
+    if (!existingState) {
+      // If no existing state, just save the imported state
+      saveData(importedState);
+      return importedState;
+    }
+    
+    // Merge the states
+    const mergedState = mergeTrackerStates(existingState, importedState);
+    
+    // Save the merged state
+    saveData(mergedState);
+    
+    return mergedState;
+  } catch (error) {
+    console.error('Failed to merge tracker states', error);
     return null;
   }
 }; 
