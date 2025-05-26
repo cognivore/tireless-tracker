@@ -1,0 +1,56 @@
+.tracker-button.dragging {
+  background-color: var(--color-primary-light, #6ea8fe);
+  transform: scale(1.02);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.tracker-button-content {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.button-container.dragging {
+  transform: scale(1.02);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+  opacity: 0.9;
+}
+
+.button-container.dragging .tracker-button {
+  background-color: var(--color-primary-light, #6ea8fe);
+}
+
+.button-container {
+  position: relative;
+}
+
+.drag-handle {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: var(--color-primary, #3a86ff);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.button-container:hover .drag-handle {
+  opacity: 1;
+}
+
+.button-container.dragging .drag-handle {
+  opacity: 1;
+  cursor: grabbing;
+} 

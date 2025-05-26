@@ -75,6 +75,10 @@ function processChangeLogs(
             // Mark for deletion
             screenMap.delete(change.entityId);
             break;
+          case 'reorder':
+            // Reordering is handled separately during the merge process
+            // We don't need to do anything here
+            break;
         }
       }
     } else if (change.entityType === 'button') {
@@ -109,6 +113,33 @@ function processChangeLogs(
             buttonMap.delete(change.entityId);
             const updatedButtons = screen.buttons.filter(b => b.id !== change.entityId);
             screen.buttons = updatedButtons;
+            break;
+          case 'move':
+            // For moves, we need the destination screen ID
+            if (change.newValue && change.timestamp > (button.lastModified || 0)) {
+              // Get destination screen
+              const destinationScreen = screenMap.get(change.newValue);
+              if (destinationScreen) {
+                // Remove button from current screen
+                screen.buttons = screen.buttons.filter(b => b.id !== button.id);
+                
+                // Add button to destination screen
+                destinationScreen.buttons.push({
+                  ...button,
+                  lastModified: change.timestamp
+                });
+                
+                // Update button map with new screen reference
+                buttonMap.set(button.id, {
+                  screen: destinationScreen,
+                  button
+                });
+              }
+            }
+            break;
+          case 'reorder':
+            // Reordering is handled separately during the merge process
+            // We don't need to do anything here
             break;
         }
       }

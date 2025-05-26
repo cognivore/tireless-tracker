@@ -25,6 +25,16 @@
   align-items: center;
 }
 
+.screen-tab-container.dragging {
+  z-index: 10;
+}
+
+.screen-tab-container.dragging .screen-tab {
+  background-color: var(--color-primary-light, #6ea8fe);
+  transform: scale(1.05);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+}
+
 .screen-tab {
   flex: 0 0 auto;
   padding: var(--spacing-md) var(--spacing-xl);

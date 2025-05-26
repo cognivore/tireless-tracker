@@ -28,7 +28,7 @@ export interface Screen {
 export interface EntityChange {
   entityId: string;
   entityType: 'screen' | 'button';
-  changeType: 'rename' | 'archive' | 'unarchive' | 'delete';
+  changeType: 'rename' | 'archive' | 'unarchive' | 'delete' | 'reorder' | 'move';
   timestamp: number;
   oldValue?: string;
   newValue?: string;

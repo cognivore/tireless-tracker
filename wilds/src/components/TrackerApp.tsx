@@ -7,12 +7,22 @@ import EditScreenName from './EditScreenName';
 import EditButtonName from './EditButtonName';
 import ArchiveManager from './ArchiveManager';
 import ActivityJournal from './ActivityJournal';
-import ShareDialog from './ShareDialog';
 import RenameTracker from './RenameTracker';
+import { DragDropContext } from '@hello-pangea/dnd';
+import type { DropResult } from '@hello-pangea/dnd';
 import * as storageService from '../services/storageService';
 import { compressState } from '../utils/compressionUtils';
 import type { AppState } from '../types';
 import '../styles/TrackerApp.css';
+
+// Create a mock ShareDialog component if needed
+// This will be replaced with the real one when it's implemented
+const ShareDialog = ({ shareUrl, onClose }: { shareUrl: string, onClose: () => void }) => (
+  <div className="share-dialog-placeholder">
+    <p>Share URL: {shareUrl}</p>
+    <button onClick={onClose}>Close</button>
+  </div>
+);
 
 interface TrackerAppProps {
   trackerId: string;
@@ -171,71 +181,136 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
     editingButton = currentScreen.buttons.find(b => b.id === editingButtonId);
   }
 
+  const handleDragEnd = (result: DropResult) => {
+    const { source, destination, type, draggableId } = result;
+    
+    console.log('Drag end result:', {
+      type,
+      draggableId,
+      source,
+      destination
+    });
+    
+    // Dropped outside the list
+    if (!destination) {
+      console.log('Dropped outside the list');
+      return;
+    }
+    
+    // Dropped in the same position
+    if (
+      source.droppableId === destination.droppableId &&
+      source.index === destination.index
+    ) {
+      console.log('Dropped in the same position');
+      return;
+    }
+
+    console.log('Drag end:', type, source, destination);
+
+    if (type === 'SCREEN') {
+      // Handle screen reordering
+      console.log('Reordering screen from', source.index, 'to', destination.index);
+      const newState = storageService.reorderScreens(
+        appState,
+        source.index,
+        destination.index
+      );
+      setAppState(newState);
+    } else if (type === 'BUTTON') {
+      if (source.droppableId === destination.droppableId) {
+        // Same screen, just reordering
+        console.log('Reordering button within screen', source.droppableId);
+        const newState = storageService.reorderButton(
+          appState,
+          source.droppableId,
+          source.index,
+          destination.index
+        );
+        setAppState(newState);
+      } else {
+        // Moving to a different screen
+        console.log('Moving button from screen', source.droppableId, 'to screen', destination.droppableId);
+        const newState = storageService.moveButtonToScreen(
+          appState,
+          source.droppableId,
+          destination.droppableId,
+          source.index,
+          destination.index
+        );
+        setAppState(newState);
+      }
+    }
+  };
+
   if (!currentScreen) {
     return <div className="loading">Loading...</div>;
   }
 
   return (
     <div className="tracker-app">
-      <header className="tracker-header">
-        <button className="back-button" onClick={onBack}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5"></path>
-            <path d="M12 19l-7-7 7-7"></path>
-          </svg>
-        </button>
-        <div className="tracker-title-container" onClick={() => setShowRenameDialog(true)}>
-          <h1 className="tracker-title">{appState.trackerName}</h1>
-          <svg className="edit-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-          </svg>
-        </div>
-        <div className="header-actions">
-          <button className="share-button" onClick={handleShare}>
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <header className="tracker-header">
+          <button className="back-button" onClick={onBack}>
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="18" cy="5" r="3"></circle>
-              <circle cx="6" cy="12" r="3"></circle>
-              <circle cx="18" cy="19" r="3"></circle>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+              <path d="M19 12H5"></path>
+              <path d="M12 19l-7-7 7-7"></path>
             </svg>
           </button>
-          <button className="journal-button" onClick={() => setShowJournal(true)}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <polyline points="10 9 9 9 8 9"></polyline>
+          <div className="tracker-title-container" onClick={() => setShowRenameDialog(true)}>
+            <h1 className="tracker-title">{appState.trackerName}</h1>
+            <svg className="edit-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
             </svg>
-          </button>
-        </div>
-      </header>
-      
-      <Navigation 
-        screens={appState.screens}
-        currentScreenId={appState.currentScreenId}
-        onScreenChange={handleScreenChange}
-        onAddScreenClick={() => setShowAddScreen(true)}
-        onEditScreenClick={handleEditScreenClick}
-        onDeleteScreenClick={handleDeleteScreenClick}
-        onArchiveClick={() => setShowArchive(true)}
-        hasArchivedItems={hasArchivedItems}
-      />
-      
-      <main className="tracker-content">
-        <Screen 
-          screen={currentScreen}
-          onButtonClick={handleButtonClick}
-          onButtonDoubleClick={handleButtonDoubleClick}
-          onButtonEdit={handleEditButtonClick}
-          onButtonDelete={handleDeleteButton}
+          </div>
+          <div className="header-actions">
+            <button className="share-button" onClick={handleShare}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+              </svg>
+            </button>
+            <button className="journal-button" onClick={() => setShowJournal(true)}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </button>
+          </div>
+        </header>
+        
+        <Navigation 
+          screens={appState.screens}
+          currentScreenId={appState.currentScreenId}
+          onScreenChange={handleScreenChange}
+          onAddScreenClick={() => setShowAddScreen(true)}
+          onEditScreenClick={handleEditScreenClick}
+          onDeleteScreenClick={handleDeleteScreenClick}
+          onArchiveClick={() => setShowArchive(true)}
+          hasArchivedItems={hasArchivedItems}
         />
         
-        <div className="add-button-container">
-          <AddButton onAdd={handleAddButton} />
-        </div>
-      </main>
+        <main className="tracker-content">
+          <Screen 
+            screen={currentScreen}
+            screens={appState.screens}
+            onButtonClick={handleButtonClick}
+            onButtonDoubleClick={handleButtonDoubleClick}
+            onButtonEdit={handleEditButtonClick}
+            onButtonDelete={handleDeleteButton}
+          />
+          
+          <div className="add-button-container">
+            <AddButton onAdd={handleAddButton} />
+          </div>
+        </main>
+      </DragDropContext>
 
       {showAddScreen && (
         <AddScreen 

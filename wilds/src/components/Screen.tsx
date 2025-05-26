@@ -1,5 +1,6 @@
 import type { Screen as ScreenType } from '../types';
-import Button from './Button';
+import { Droppable } from '@hello-pangea/dnd';
+import DraggableButton from './DraggableButton';
 import '../styles/Screen.css';
 
 interface ScreenProps {
@@ -8,6 +9,7 @@ interface ScreenProps {
   onButtonDoubleClick: (buttonId: string) => void;
   onButtonEdit: (buttonId: string) => void;
   onButtonDelete: (buttonId: string) => void;
+  screens: ScreenType[];
 }
 
 export default function Screen({ 
@@ -15,7 +17,7 @@ export default function Screen({
   onButtonClick, 
   onButtonDoubleClick,
   onButtonEdit,
-  onButtonDelete
+  onButtonDelete,
 }: ScreenProps) {
   // Filter out archived buttons
   const activeButtons = screen.buttons.filter(button => !button.archived);
@@ -24,24 +26,58 @@ export default function Screen({
     <div className="screen">
       <div className="screen-name">{screen.name}</div>
       {activeButtons.length > 0 ? (
-        <div className="buttons-grid">
-          {activeButtons.map(button => (
-            <Button
-              key={button.id}
-              data={button}
-              onClick={() => onButtonClick(button.id)}
-              onDoubleClick={() => onButtonDoubleClick(button.id)}
-              onEditClick={onButtonEdit}
-              onDeleteClick={onButtonDelete}
-            />
-          ))}
-        </div>
+        <Droppable 
+          droppableId={screen.id} 
+          type="BUTTON" 
+          isDropDisabled={false}
+          isCombineEnabled={false}
+          ignoreContainerClipping={false}
+        >
+          {(provided) => (
+            <div 
+              className="buttons-grid"
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+            >
+              {activeButtons.map((button, index) => (
+                <DraggableButton
+                  key={button.id}
+                  button={button}
+                  index={index}
+                  onClick={() => onButtonClick(button.id)}
+                  onDoubleClick={() => onButtonDoubleClick(button.id)}
+                  onEdit={() => onButtonEdit(button.id)}
+                  onDelete={() => onButtonDelete(button.id)}
+                />
+              ))}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
       ) : (
-        <div className="empty-screen">
-          <p>No buttons on this screen yet.</p>
-          <p className="empty-screen-help">Click "+ Add Button" below to create one.</p>
-        </div>
+        <Droppable 
+          droppableId={screen.id} 
+          type="BUTTON" 
+          isDropDisabled={false}
+          isCombineEnabled={false}
+          ignoreContainerClipping={false}
+        >
+          {(provided) => (
+            <div 
+              className="empty-screen"
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+            >
+              <p>No buttons on this screen yet.</p>
+              <p className="empty-screen-help">Click "+ Add Button" below to create one.</p>
+              <p className="empty-screen-help">You can also drag buttons from other screens here.</p>
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
       )}
+      
+      {/* Hidden droppable areas for other screens are not needed and might cause conflicts */}
     </div>
   );
 } 

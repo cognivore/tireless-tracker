@@ -178,14 +178,23 @@ export const decrementClick = (state: AppState, screenId: string, buttonId: stri
   return newState;
 };
 
+/**
+ * Sanitizes an ID to ensure it's a valid, consistent string
+ */
+function sanitizeId(id: string | number): string {
+  return id.toString().replace(/\s+/g, '-');
+}
+
 export const addButton = (state: AppState, screenId: string, buttonText: string): AppState => {
   const newState = { ...state };
   const screen = newState.screens.find(s => s.id === screenId);
   
   if (screen) {
     const now = Date.now();
+    const buttonId = sanitizeId(`button-${now}-${Math.floor(Math.random() * 10000)}`);
+    
     const newButton: ButtonData = {
-      id: `button-${now}-${Math.floor(Math.random() * 10000)}`,
+      id: buttonId,
       text: buttonText,
       count: 0,
       clicks: [],
@@ -591,4 +600,172 @@ export const mergeTrackerState = (importedState: AppState): AppState | null => {
     console.error('Failed to merge tracker states', error);
     return null;
   }
+};
+
+/**
+ * Reorders a button within the same screen
+ */
+export const reorderButton = (
+  state: AppState, 
+  screenId: string, 
+  sourceIndex: number, 
+  destinationIndex: number
+): AppState => {
+  console.log('Reordering button in screen:', screenId, 'from index', sourceIndex, 'to', destinationIndex);
+  
+  const newState = { ...state };
+  const screen = newState.screens.find(s => s.id === screenId);
+  
+  if (!screen) {
+    console.error('Screen not found:', screenId);
+    return state;
+  }
+  
+  console.log('Found screen:', screen.name, 'with', screen.buttons.length, 'buttons');
+  
+  // Get only visible (non-archived) buttons
+  const visibleButtons = screen.buttons.filter(button => !button.archived);
+  console.log('Visible buttons:', visibleButtons.length);
+  
+  if (sourceIndex < 0 || sourceIndex >= visibleButtons.length) {
+    console.error('Source index out of bounds:', sourceIndex, 'for length', visibleButtons.length);
+    return state;
+  }
+  
+  // Remove the button from its current position
+  const [movedButton] = visibleButtons.splice(sourceIndex, 1);
+  console.log('Moving button:', movedButton.text);
+  
+  // Insert the button at the new position
+  visibleButtons.splice(destinationIndex, 0, movedButton);
+  
+  // Update the buttons array, preserving archived buttons
+  const archivedButtons = screen.buttons.filter(button => button.archived);
+  screen.buttons = [...visibleButtons, ...archivedButtons];
+  
+  // Log the change
+  const change: EntityChange = {
+    entityId: movedButton.id,
+    entityType: 'button',
+    changeType: 'reorder',
+    timestamp: Date.now()
+  };
+  
+  newState.changeLog = [...(newState.changeLog || []), change];
+  
+  saveData(newState);
+  return newState;
+};
+
+/**
+ * Moves a button from one screen to another
+ */
+export const moveButtonToScreen = (
+  state: AppState, 
+  sourceScreenId: string, 
+  destinationScreenId: string, 
+  sourceIndex: number, 
+  destinationIndex: number
+): AppState => {
+  console.log('Moving button from screen:', sourceScreenId, 'to screen:', destinationScreenId);
+  
+  const newState = { ...state };
+  const sourceScreen = newState.screens.find(s => s.id === sourceScreenId);
+  const destinationScreen = newState.screens.find(s => s.id === destinationScreenId);
+  
+  if (!sourceScreen) {
+    console.error('Source screen not found:', sourceScreenId);
+    return state;
+  }
+  
+  if (!destinationScreen) {
+    console.error('Destination screen not found:', destinationScreenId);
+    return state;
+  }
+  
+  console.log('Source screen:', sourceScreen.name, 'with', sourceScreen.buttons.length, 'buttons');
+  console.log('Destination screen:', destinationScreen.name, 'with', destinationScreen.buttons.length, 'buttons');
+  
+  // Get only visible (non-archived) buttons
+  const sourceVisibleButtons = sourceScreen.buttons.filter(button => !button.archived);
+  console.log('Source visible buttons:', sourceVisibleButtons.length);
+  
+  if (sourceIndex < 0 || sourceIndex >= sourceVisibleButtons.length) {
+    console.error('Source index out of bounds:', sourceIndex, 'for length', sourceVisibleButtons.length);
+    return state;
+  }
+  
+  // Remove the button from the source screen
+  const [movedButton] = sourceVisibleButtons.splice(sourceIndex, 1);
+  console.log('Moving button:', movedButton.text);
+  
+  // Update the source screen's buttons array, preserving archived buttons
+  const sourceArchivedButtons = sourceScreen.buttons.filter(button => button.archived);
+  sourceScreen.buttons = [...sourceVisibleButtons, ...sourceArchivedButtons];
+  
+  // Get visible buttons from destination screen
+  const destinationVisibleButtons = destinationScreen.buttons.filter(button => !button.archived);
+  
+  // Insert the button at the destination position
+  destinationVisibleButtons.splice(destinationIndex, 0, {
+    ...movedButton,
+    lastModified: Date.now(),
+    entityVersion: (movedButton.entityVersion || 1) + 1
+  });
+  
+  // Update the destination screen's buttons array, preserving archived buttons
+  const destinationArchivedButtons = destinationScreen.buttons.filter(button => button.archived);
+  destinationScreen.buttons = [...destinationVisibleButtons, ...destinationArchivedButtons];
+  
+  // Log the change
+  const change: EntityChange = {
+    entityId: movedButton.id,
+    entityType: 'button',
+    changeType: 'move',
+    timestamp: Date.now(),
+    oldValue: sourceScreenId,
+    newValue: destinationScreenId
+  };
+  
+  newState.changeLog = [...(newState.changeLog || []), change];
+  
+  saveData(newState);
+  return newState;
+};
+
+/**
+ * Reorders screens
+ */
+export const reorderScreens = (
+  state: AppState, 
+  sourceIndex: number, 
+  destinationIndex: number
+): AppState => {
+  const newState = { ...state };
+  
+  // Get only visible (non-archived) screens
+  const visibleScreens = newState.screens.filter(screen => !screen.archived);
+  
+  // Remove the screen from its current position
+  const [movedScreen] = visibleScreens.splice(sourceIndex, 1);
+  
+  // Insert the screen at the new position
+  visibleScreens.splice(destinationIndex, 0, movedScreen);
+  
+  // Update the screens array, preserving archived screens
+  const archivedScreens = newState.screens.filter(screen => screen.archived);
+  newState.screens = [...visibleScreens, ...archivedScreens];
+  
+  // Log the change
+  const change: EntityChange = {
+    entityId: movedScreen.id,
+    entityType: 'screen',
+    changeType: 'reorder',
+    timestamp: Date.now()
+  };
+  
+  newState.changeLog = [...(newState.changeLog || []), change];
+  
+  saveData(newState);
+  return newState;
 }; 
