@@ -36,9 +36,9 @@ export default function Navigation({
         isCombineEnabled={false}
         ignoreContainerClipping={false}
       >
-        {(provided) => (
+        {(provided, snapshot) => (
           <div 
-            className="screens-tabs" 
+            className={`screens-tabs ${snapshot.isDraggingOver ? 'dragging-over' : ''}`} 
             ref={provided.innerRef}
             {...provided.droppableProps}
           >

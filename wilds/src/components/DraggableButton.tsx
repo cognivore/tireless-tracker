@@ -11,6 +11,7 @@ interface DraggableButtonProps {
   onDoubleClick: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onMoveToScreen?: (buttonId: string, buttonText: string) => void;
 }
 
 export default function DraggableButton({
@@ -19,10 +20,12 @@ export default function DraggableButton({
   onClick,
   onDoubleClick,
   onEdit,
-  onDelete
+  onDelete,
+  onMoveToScreen
 }: DraggableButtonProps) {
   const [timerId, setTimerId] = useState<number | null>(null);
   const isDragging = useRef(false);
+  const longPressTimer = useRef<number | null>(null);
   
   // Create a stable draggable ID that won't change between renders
   const draggableId = useMemo(() => {
@@ -30,10 +33,30 @@ export default function DraggableButton({
     return button.id.toString().replace(/\s+/g, '-');
   }, [button.id]);
   
-  // Log button info for debugging
+  // Clean up any timers when component unmounts
   useEffect(() => {
-    console.log(`Button rendered: ${button.text} (ID: ${draggableId}, Index: ${index})`);
-  }, [button.text, draggableId, index]);
+    return () => {
+      if (timerId) window.clearTimeout(timerId);
+      if (longPressTimer.current) window.clearTimeout(longPressTimer.current);
+    };
+  }, [timerId]);
+  
+  const handleTouchStart = () => {
+    // Set a timer for long press
+    longPressTimer.current = window.setTimeout(() => {
+      // Long press detected, can be used to start drag on mobile
+      console.log('Long press detected on button:', button.text);
+      // No need to do anything here as the drag handle will be responsible
+    }, 500);
+  };
+  
+  const handleTouchEnd = () => {
+    // Clear the long press timer
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
   
   const handleClick = (e: React.MouseEvent) => {
     // Don't trigger click if we just finished dragging
@@ -66,7 +89,6 @@ export default function DraggableButton({
         // Set dragging flag when drag state changes
         if (snapshot.isDragging) {
           isDragging.current = true;
-          console.log(`Dragging button: ${button.text} (ID: ${draggableId})`);
         }
         
         return (
@@ -74,6 +96,8 @@ export default function DraggableButton({
             className={`button-container ${snapshot.isDragging ? 'dragging' : ''}`}
             ref={provided.innerRef}
             {...provided.draggableProps}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
           >
             <div className="button-actions">
               <button 
@@ -117,13 +141,18 @@ export default function DraggableButton({
             <div 
               className="drag-handle"
               data-drag-handle="true"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onMoveToScreen) {
+                  onMoveToScreen(button.id, button.text);
+                }
+              }}
               {...provided.dragHandleProps}
+              title="Move to another screen"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="8" cy="8" r="1"></circle>
-                <circle cx="8" cy="16" r="1"></circle>
-                <circle cx="16" cy="8" r="1"></circle>
-                <circle cx="16" cy="16" r="1"></circle>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8L22 12L18 16"></path>
+                <path d="M2 12H22"></path>
               </svg>
             </div>
           </div>

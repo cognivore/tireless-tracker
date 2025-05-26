@@ -9,7 +9,7 @@ import ArchiveManager from './ArchiveManager';
 import ActivityJournal from './ActivityJournal';
 import RenameTracker from './RenameTracker';
 import { DragDropContext } from '@hello-pangea/dnd';
-import type { DropResult } from '@hello-pangea/dnd';
+import type { DropResult, DragStart } from '@hello-pangea/dnd';
 import * as storageService from '../services/storageService';
 import { compressState } from '../utils/compressionUtils';
 import type { AppState } from '../types';
@@ -39,6 +39,14 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ message: string, visible: boolean }>({ message: '', visible: false });
+  
+  // Drag and drop state
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggingButtonId, setDraggingButtonId] = useState<string | null>(null);
+  const [draggingButtonText, setDraggingButtonText] = useState<string>('');
+  const [draggingSourceScreenId, setDraggingSourceScreenId] = useState<string | null>(null);
+  const [screenSelectorVisible, setScreenSelectorVisible] = useState(false);
 
   // Load data on mount
   useEffect(() => {
@@ -48,6 +56,36 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
     }
     setLoading(false);
   }, [trackerId]);
+
+  // Add keyboard event listener for Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && screenSelectorVisible) {
+        setScreenSelectorVisible(false);
+        setIsDragging(false);
+        setDraggingButtonId(null);
+        setDraggingSourceScreenId(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [screenSelectorVisible]);
+
+  // Add/remove dragging class to body
+  useEffect(() => {
+    if (isDragging) {
+      document.body.classList.add('dragging-active');
+    } else {
+      document.body.classList.remove('dragging-active');
+    }
+    
+    return () => {
+      document.body.classList.remove('dragging-active');
+    };
+  }, [isDragging]);
 
   if (loading) {
     return <div className="loading">Loading...</div>;
@@ -181,19 +219,26 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
     editingButton = currentScreen.buttons.find(b => b.id === editingButtonId);
   }
 
-  const handleDragEnd = (result: DropResult) => {
-    const { source, destination, type, draggableId } = result;
+  const handleDragStart = (start: DragStart) => {
+    console.log('Drag start:', start);
     
-    console.log('Drag end result:', {
-      type,
-      draggableId,
-      source,
-      destination
-    });
+    // Set dragging state for visual indicators
+    if (start.type === 'BUTTON') {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragEnd = (result: DropResult) => {
+    const { source, destination, type } = result;
+    
+    // Clear dragging state
+    setIsDragging(false);
+    setDraggingButtonId(null);
+    setDraggingSourceScreenId(null);
+    setScreenSelectorVisible(false);
     
     // Dropped outside the list
     if (!destination) {
-      console.log('Dropped outside the list');
       return;
     }
     
@@ -202,15 +247,11 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
       source.droppableId === destination.droppableId &&
       source.index === destination.index
     ) {
-      console.log('Dropped in the same position');
       return;
     }
 
-    console.log('Drag end:', type, source, destination);
-
     if (type === 'SCREEN') {
       // Handle screen reordering
-      console.log('Reordering screen from', source.index, 'to', destination.index);
       const newState = storageService.reorderScreens(
         appState,
         source.index,
@@ -220,7 +261,6 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
     } else if (type === 'BUTTON') {
       if (source.droppableId === destination.droppableId) {
         // Same screen, just reordering
-        console.log('Reordering button within screen', source.droppableId);
         const newState = storageService.reorderButton(
           appState,
           source.droppableId,
@@ -230,7 +270,10 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
         setAppState(newState);
       } else {
         // Moving to a different screen
-        console.log('Moving button from screen', source.droppableId, 'to screen', destination.droppableId);
+        const sourceScreen = appState.screens.find(s => s.id === source.droppableId);
+        const destScreen = appState.screens.find(s => s.id === destination.droppableId);
+        const button = sourceScreen?.buttons.find((_, idx) => idx === source.index);
+        
         const newState = storageService.moveButtonToScreen(
           appState,
           source.droppableId,
@@ -238,9 +281,33 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
           source.index,
           destination.index
         );
+        
+        // Switch to the destination screen
+        newState.currentScreenId = destination.droppableId;
         setAppState(newState);
+        
+        // Show toast notification
+        if (button && sourceScreen && destScreen) {
+          setToast({
+            message: `Moved "${button.text}" from "${sourceScreen.name}" to "${destScreen.name}"`,
+            visible: true
+          });
+          
+          // Hide toast after 3 seconds
+          setTimeout(() => {
+            setToast(prev => ({ ...prev, visible: false }));
+          }, 3000);
+        }
       }
     }
+  };
+
+  // Function to handle showing screen selector
+  const handleMoveToScreen = (buttonId: string, buttonText: string) => {
+    setDraggingButtonId(buttonId);
+    setDraggingButtonText(buttonText);
+    setDraggingSourceScreenId(appState.currentScreenId);
+    setScreenSelectorVisible(true);
   };
 
   if (!currentScreen) {
@@ -249,7 +316,7 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
 
   return (
     <div className="tracker-app">
-      <DragDropContext onDragEnd={handleDragEnd}>
+      <DragDropContext onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
         <header className="tracker-header">
           <button className="back-button" onClick={onBack}>
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -297,6 +364,7 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
         />
         
         <main className="tracker-content">
+          {/* Only render the current screen */}
           <Screen 
             screen={currentScreen}
             screens={appState.screens}
@@ -304,6 +372,7 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
             onButtonDoubleClick={handleButtonDoubleClick}
             onButtonEdit={handleEditButtonClick}
             onButtonDelete={handleDeleteButton}
+            onMoveToScreen={handleMoveToScreen}
           />
           
           <div className="add-button-container">
@@ -368,6 +437,81 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
           onRename={handleRenameTracker}
           onCancel={() => setShowRenameDialog(false)}
         />
+      )}
+      
+      {/* Toast notification */}
+      <div className={`toast-notification ${toast.visible ? 'visible' : ''}`}>
+        {toast.message}
+      </div>
+      
+      {/* Screen selector for moving buttons between screens */}
+      {screenSelectorVisible && (
+        <>
+          <div className="screen-selector-overlay" onClick={() => setScreenSelectorVisible(false)}></div>
+          <div className="screen-selector">
+            <div className="screen-selector-header">
+              <span className="screen-selector-title">Move "{draggingButtonText}" to:</span>
+            </div>
+            <div className="screen-selector-options">
+              {appState.screens
+                .filter(screen => !screen.archived && screen.id !== draggingSourceScreenId)
+                .map(screen => (
+                  <button
+                    key={screen.id}
+                    className="screen-selector-option"
+                    onClick={() => {
+                      // Move the button to the selected screen
+                      if (draggingButtonId && draggingSourceScreenId) {
+                        // Find the button index in the source screen
+                        const sourceScreen = appState.screens.find(s => s.id === draggingSourceScreenId);
+                        if (sourceScreen) {
+                          const buttonIndex = sourceScreen.buttons.findIndex(b => b.id === draggingButtonId);
+                          if (buttonIndex !== -1) {
+                            const newState = storageService.moveButtonToScreen(
+                              appState,
+                              draggingSourceScreenId,
+                              screen.id,
+                              buttonIndex,
+                              0 // Insert at the beginning of the target screen
+                            );
+                            // Switch to the destination screen
+                            newState.currentScreenId = screen.id;
+                            setAppState(newState);
+                            
+                            // Show toast notification
+                            setToast({
+                              message: `Moved "${draggingButtonText}" to "${screen.name}"`,
+                              visible: true
+                            });
+                            
+                            // Hide toast after 3 seconds
+                            setTimeout(() => {
+                              setToast(prev => ({ ...prev, visible: false }));
+                            }, 3000);
+                          }
+                        }
+                      }
+                      // Hide the screen selector
+                      setScreenSelectorVisible(false);
+                      setIsDragging(false);
+                      setDraggingButtonId(null);
+                      setDraggingSourceScreenId(null);
+                    }}
+                  >
+                    {screen.name}
+                  </button>
+                ))}
+            </div>
+            <button 
+              className="screen-selector-cancel" 
+              onClick={() => {
+                setScreenSelectorVisible(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

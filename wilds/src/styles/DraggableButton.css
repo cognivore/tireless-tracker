@@ -13,10 +13,11 @@
 }
 
 .button-container.dragging {
-  transform: scale(1.02);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  z-index: 10;
-  opacity: 0.9;
+  transform: scale(1.05);
+  z-index: 100;
+  background-color: #fff;
+  position: relative;
 }
 
 .button-container.dragging .tracker-button {
@@ -25,6 +26,7 @@
 
 .button-container {
   position: relative;
+  transform: translate3d(0, 0, 0); /* Force hardware acceleration */
 }
 
 .drag-handle {
@@ -39,18 +41,30 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: grab;
+  cursor: pointer;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   z-index: 5;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
 }
 
 .button-container:hover .drag-handle {
   opacity: 1;
 }
 
-.button-container.dragging .drag-handle {
-  opacity: 1;
-  cursor: grabbing;
+.drag-handle:hover {
+  transform: scale(1.1);
+  background-color: var(--color-primary-dark, #2070e0);
+}
+
+.drag-handle:active {
+  transform: scale(0.95);
+}
+
+body.dragging-active .screen-wrapper:not(.drag-source) {
+  cursor: cell;
+}
+
+body.dragging-active .screen-wrapper:not(.drag-source) .tracker-button {
+  cursor: cell;
 } 

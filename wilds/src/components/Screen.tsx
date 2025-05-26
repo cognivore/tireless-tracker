@@ -10,6 +10,7 @@ interface ScreenProps {
   onButtonEdit: (buttonId: string) => void;
   onButtonDelete: (buttonId: string) => void;
   screens: ScreenType[];
+  onMoveToScreen?: (buttonId: string, buttonText: string) => void;
 }
 
 export default function Screen({ 
@@ -18,6 +19,7 @@ export default function Screen({
   onButtonDoubleClick,
   onButtonEdit,
   onButtonDelete,
+  onMoveToScreen,
 }: ScreenProps) {
   // Filter out archived buttons
   const activeButtons = screen.buttons.filter(button => !button.archived);
@@ -25,59 +27,45 @@ export default function Screen({
   return (
     <div className="screen">
       <div className="screen-name">{screen.name}</div>
-      {activeButtons.length > 0 ? (
-        <Droppable 
-          droppableId={screen.id} 
-          type="BUTTON" 
-          isDropDisabled={false}
-          isCombineEnabled={false}
-          ignoreContainerClipping={false}
-        >
-          {(provided) => (
-            <div 
-              className="buttons-grid"
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-            >
-              {activeButtons.map((button, index) => (
-                <DraggableButton
-                  key={button.id}
-                  button={button}
-                  index={index}
-                  onClick={() => onButtonClick(button.id)}
-                  onDoubleClick={() => onButtonDoubleClick(button.id)}
-                  onEdit={() => onButtonEdit(button.id)}
-                  onDelete={() => onButtonDelete(button.id)}
-                />
-              ))}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      ) : (
-        <Droppable 
-          droppableId={screen.id} 
-          type="BUTTON" 
-          isDropDisabled={false}
-          isCombineEnabled={false}
-          ignoreContainerClipping={false}
-        >
-          {(provided) => (
-            <div 
-              className="empty-screen"
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-            >
-              <p>No buttons on this screen yet.</p>
-              <p className="empty-screen-help">Click "+ Add Button" below to create one.</p>
-              <p className="empty-screen-help">You can also drag buttons from other screens here.</p>
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      )}
-      
-      {/* Hidden droppable areas for other screens are not needed and might cause conflicts */}
+      <Droppable 
+        droppableId={screen.id} 
+        type="BUTTON" 
+        isDropDisabled={false}
+        isCombineEnabled={false}
+        ignoreContainerClipping={false}
+      >
+        {(provided, snapshot) => (
+          <div 
+            className={`buttons-container ${snapshot.isDraggingOver ? 'dragging-over' : ''} ${activeButtons.length === 0 ? 'empty' : ''}`}
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+          >
+            {activeButtons.length > 0 ? (
+              <div className="buttons-grid">
+                {activeButtons.map((button, index) => (
+                  <DraggableButton
+                    key={button.id}
+                    button={button}
+                    index={index}
+                    onClick={() => onButtonClick(button.id)}
+                    onDoubleClick={() => onButtonDoubleClick(button.id)}
+                    onEdit={() => onButtonEdit(button.id)}
+                    onDelete={() => onButtonDelete(button.id)}
+                    onMoveToScreen={onMoveToScreen}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="empty-screen">
+                <p>No buttons on this screen yet.</p>
+                <p className="empty-screen-help">Click "+ Add Button" below to create one.</p>
+                <p className="empty-screen-help">You can also drag buttons from other screens here.</p>
+              </div>
+            )}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
     </div>
   );
 } 

@@ -161,4 +161,173 @@
 
 .tracker-title-container:hover .edit-icon {
   opacity: 1;
+}
+
+.screens-container,
+.screen-wrapper,
+.screen-wrapper.active,
+.screen-wrapper.hidden,
+.screen-wrapper.hidden.dragging-over,
+body.dragging-active .screen-wrapper.hidden,
+.screen-wrapper.drag-source,
+body.dragging-active .screen-wrapper.hidden .buttons-grid,
+body.dragging-active .screen-wrapper.hidden .empty-screen,
+.screen-wrapper.hover-target,
+.screen-wrapper.hover-target .buttons-grid,
+.screen-wrapper.hover-target .empty-screen,
+body.dragging-active .screen-wrapper:not(.drag-source),
+body.dragging-active .screen-wrapper:not(.drag-source) .tracker-button {
+  /* Remove all these styles */
+}
+
+/* Toast notification */
+.toast-notification {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background-color: #333;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 4px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  max-width: 80%;
+  text-align: center;
+  pointer-events: none;
+}
+
+.toast-notification.visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* Screen Selector */
+.screen-selector {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 320px;
+  padding: 20px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translate(-50%, -55%); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+.screen-selector-header {
+  margin-bottom: 16px;
+  text-align: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.screen-selector-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #333;
+}
+
+.screen-selector-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.screen-selector-option {
+  background-color: #f5f5f5;
+  border: none;
+  padding: 14px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  text-align: left;
+  transition: all 0.2s;
+  color: #333;
+  font-weight: 500;
+}
+
+.screen-selector-option:hover {
+  background-color: #e0f0ff;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.screen-selector-option:active {
+  transform: translateY(0);
+}
+
+.screen-selector-cancel {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #f1f1f1;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s;
+  color: #666;
+}
+
+.screen-selector-cancel:hover {
+  background-color: #e1e1e1;
+  color: #333;
+}
+
+/* Dragging indicator */
+body.dragging-active .tracker-content {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+body.dragging-active .buttons-container {
+  border: 2px dashed #ddd;
+}
+
+/* Improve screen selector appearance */
+.screen-selector {
+  z-index: 2000;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+body.dragging-active::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.1);
+  z-index: 999;
+  pointer-events: none;
+}
+
+.screen-selector-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1999;
+  animation: fadeInOverlay 0.2s ease;
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
 } 
