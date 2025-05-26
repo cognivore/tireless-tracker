@@ -683,35 +683,33 @@ export const moveButtonToScreen = (
     return state;
   }
   
-  console.log('Source screen:', sourceScreen.name, 'with', sourceScreen.buttons.length, 'buttons');
-  console.log('Destination screen:', destinationScreen.name, 'with', destinationScreen.buttons.length, 'buttons');
-  
   // Get only visible (non-archived) buttons
   const sourceVisibleButtons = sourceScreen.buttons.filter(button => !button.archived);
-  console.log('Source visible buttons:', sourceVisibleButtons.length);
   
   if (sourceIndex < 0 || sourceIndex >= sourceVisibleButtons.length) {
     console.error('Source index out of bounds:', sourceIndex, 'for length', sourceVisibleButtons.length);
     return state;
   }
   
-  // Remove the button from the source screen
-  const [movedButton] = sourceVisibleButtons.splice(sourceIndex, 1);
-  console.log('Moving button:', movedButton.text);
+  // Get the button to move
+  const movedButton = sourceVisibleButtons[sourceIndex];
   
-  // Update the source screen's buttons array, preserving archived buttons
-  const sourceArchivedButtons = sourceScreen.buttons.filter(button => button.archived);
-  sourceScreen.buttons = [...sourceVisibleButtons, ...sourceArchivedButtons];
+  // Increment the button's entity version
+  const now = Date.now();
+  const updatedButton = {
+    ...movedButton,
+    lastModified: now,
+    entityVersion: (movedButton.entityVersion || 1) + 1
+  };
+  
+  // Remove the button from the source screen
+  sourceScreen.buttons = sourceScreen.buttons.filter(b => b.id !== movedButton.id);
   
   // Get visible buttons from destination screen
   const destinationVisibleButtons = destinationScreen.buttons.filter(button => !button.archived);
   
   // Insert the button at the destination position
-  destinationVisibleButtons.splice(destinationIndex, 0, {
-    ...movedButton,
-    lastModified: Date.now(),
-    entityVersion: (movedButton.entityVersion || 1) + 1
-  });
+  destinationVisibleButtons.splice(destinationIndex, 0, updatedButton);
   
   // Update the destination screen's buttons array, preserving archived buttons
   const destinationArchivedButtons = destinationScreen.buttons.filter(button => button.archived);
@@ -722,12 +720,15 @@ export const moveButtonToScreen = (
     entityId: movedButton.id,
     entityType: 'button',
     changeType: 'move',
-    timestamp: Date.now(),
+    timestamp: now,
     oldValue: sourceScreenId,
     newValue: destinationScreenId
   };
   
   newState.changeLog = [...(newState.changeLog || []), change];
+  
+  // Update the state's last modified time
+  newState.lastModified = now;
   
   saveData(newState);
   return newState;
