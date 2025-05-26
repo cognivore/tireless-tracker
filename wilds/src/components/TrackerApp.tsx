@@ -15,14 +15,56 @@ import { compressState } from '../utils/compressionUtils';
 import type { AppState } from '../types';
 import '../styles/TrackerApp.css';
 
-// Create a mock ShareDialog component if needed
-// This will be replaced with the real one when it's implemented
-const ShareDialog = ({ shareUrl, onClose }: { shareUrl: string, onClose: () => void }) => (
-  <div className="share-dialog-placeholder">
-    <p>Share URL: {shareUrl}</p>
-    <button onClick={onClose}>Close</button>
-  </div>
-);
+// Create a ShareDialog component with proper overlay styling
+const ShareDialog = ({ shareUrl, onClose }: { shareUrl: string, onClose: () => void }) => {
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = () => {
+    navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    
+    // Reset after 1.5 seconds
+    setTimeout(() => {
+      setCopied(false);
+    }, 1500);
+  };
+  
+  return (
+    <>
+      <div className="screen-selector-overlay" onClick={onClose}></div>
+      <div className="share-dialog">
+        <div className="share-dialog-header">
+          <h2>Share Tracker</h2>
+        </div>
+        <div className="share-dialog-content">
+          <p className="share-dialog-description">Copy this URL to share your tracker with others:</p>
+          <div className="share-url-container">
+            <input 
+              type="text" 
+              value={shareUrl} 
+              readOnly 
+              className="share-url-input"
+              onClick={(e) => (e.target as HTMLInputElement).select()} 
+            />
+            <button 
+              className={`copy-button ${copied ? 'copied' : ''}`}
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              ) : (
+                'Copy'
+              )}
+            </button>
+          </div>
+        </div>
+        <button className="screen-selector-cancel" onClick={onClose}>Close</button>
+      </div>
+    </>
+  );
+};
 
 interface TrackerAppProps {
   trackerId: string;
