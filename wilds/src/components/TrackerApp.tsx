@@ -34,17 +34,16 @@ const ShareDialog = ({ shareUrl, onClose }: { shareUrl: string, onClose: () => v
       <div className="screen-selector-overlay" onClick={onClose}></div>
       <div className="share-dialog">
         <div className="share-dialog-header">
-          <h2>Share Tracker</h2>
+          <h2>Export Tracker Data</h2>
         </div>
         <div className="share-dialog-content">
-          <p className="share-dialog-description">Copy this URL to share your tracker with others:</p>
+          <p className="share-dialog-description">Copy this code to share your tracker with others. You can paste it in the "Import Tracker" option on the home screen.</p>
           <div className="share-url-container">
-            <input 
-              type="text" 
+            <textarea 
               value={shareUrl} 
               readOnly 
-              className="share-url-input"
-              onClick={(e) => (e.target as HTMLInputElement).select()} 
+              className="share-data-input"
+              onClick={(e) => (e.target as HTMLTextAreaElement).select()} 
             />
             <button 
               className={`copy-button ${copied ? 'copied' : ''}`}
@@ -222,24 +221,15 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
     setAppState(newState);
   };
 
-  const handleShare = () => {
-    setShowShareDialog(true);
-  };
-  
-  const getShareableUrl = (): string => {
+  const getShareableData = (): string => {
     if (!appState) return '';
     
-    // Compress the state to a URL-safe string
-    const compressedState = compressState(appState);
-    
-    // Create the URL with the compressed state
-    const baseUrl = window.location.origin + window.location.pathname;
-    const url = new URL(baseUrl);
-    
-    // Add the compressed state as a parameter
-    url.searchParams.set('import', compressedState);
-    
-    return url.toString();
+    // Compress the state to a string
+    return compressState(appState);
+  };
+  
+  const handleShare = () => {
+    setShowShareDialog(true);
   };
   
   const handleRenameTracker = (newName: string) => {
@@ -468,7 +458,7 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
       
       {showShareDialog && (
         <ShareDialog
-          shareUrl={getShareableUrl()}
+          shareUrl={getShareableData()}
           onClose={() => setShowShareDialog(false)}
         />
       )}

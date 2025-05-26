@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import TrackerArchive from './TrackerArchive';
 import * as storageService from '../services/storageService';
+import { decompressState } from '../utils/compressionUtils';
 import '../styles/HomePage.css';
 
 interface HomePageProps {
@@ -13,6 +14,10 @@ export default function HomePage({ onTrackerCreate, onTrackerSelect }: HomePageP
   const [newTrackerName, setNewTrackerName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importData, setImportData] = useState('');
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState(false);
 
   const loadTrackers = () => {
     // Get only active trackers
@@ -45,6 +50,68 @@ export default function HomePage({ onTrackerCreate, onTrackerSelect }: HomePageP
   const hasArchivedTrackers = () => {
     const allTrackers = storageService.getTrackersList();
     return allTrackers.some(tracker => tracker.archived);
+  };
+
+  const handleImportTracker = () => {
+    try {
+      if (!importData.trim()) {
+        setImportError('Please paste the tracker data');
+        return;
+      }
+      
+      // Try to decompress the state
+      const importedState = decompressState(importData.trim());
+      
+      if (!importedState) {
+        setImportError('Failed to parse tracker data');
+        return;
+      }
+      
+      // Check if the tracker already exists
+      const exists = storageService.trackerExists(importedState.trackerId);
+      
+      if (exists) {
+        const confirmed = window.confirm('A tracker with this ID already exists. Do you want to merge the data?');
+        if (confirmed) {
+          // Merge the states
+          const mergedState = storageService.mergeTrackerState(importedState);
+          if (mergedState) {
+            setImportSuccess(true);
+            loadTrackers();
+            
+            // Reset success state after 1.5 seconds
+            setTimeout(() => {
+              setImportSuccess(false);
+              setShowImport(false);
+              setImportData('');
+              setImportError(null);
+            }, 1500);
+          } else {
+            setImportError('Failed to merge tracker data');
+          }
+        }
+      } else {
+        // Import as new
+        const success = storageService.importTracker(importedState);
+        if (success) {
+          setImportSuccess(true);
+          loadTrackers();
+          
+          // Reset success state after 1.5 seconds
+          setTimeout(() => {
+            setImportSuccess(false);
+            setShowImport(false);
+            setImportData('');
+            setImportError(null);
+          }, 1500);
+        } else {
+          setImportError('Failed to import tracker');
+        }
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      setImportError('Invalid tracker data. Please check the format and try again.');
+    }
   };
 
   return (
@@ -120,12 +187,20 @@ export default function HomePage({ onTrackerCreate, onTrackerSelect }: HomePageP
             </div>
           </form>
         ) : (
-          <button 
-            className="create-tracker-button" 
-            onClick={() => setIsCreating(true)}
-          >
-            + Create New Tracker
-          </button>
+          <div className="home-buttons">
+            <button 
+              className="create-tracker-button" 
+              onClick={() => setIsCreating(true)}
+            >
+              + Create New Tracker
+            </button>
+            <button
+              className="import-tracker-button"
+              onClick={() => setShowImport(true)}
+            >
+              → Import Tracker
+            </button>
+          </div>
         )}
       </div>
 
@@ -137,6 +212,58 @@ export default function HomePage({ onTrackerCreate, onTrackerSelect }: HomePageP
           }}
           onTrackerSelect={onTrackerSelect} 
         />
+      )}
+      
+      {/* Import Tracker Dialog */}
+      {showImport && (
+        <>
+          <div className="screen-selector-overlay" onClick={() => setShowImport(false)}></div>
+          <div className="import-dialog">
+            <div className="import-dialog-header">
+              <h2>Import Tracker</h2>
+            </div>
+            <div className="import-dialog-content">
+              <p className="import-dialog-description">
+                Paste the tracker data below to import it:
+              </p>
+              {importError && (
+                <div className="import-error">{importError}</div>
+              )}
+              <textarea
+                className="import-data-input"
+                value={importData}
+                onChange={(e) => setImportData(e.target.value)}
+                placeholder="Paste tracker data here..."
+                rows={8}
+              />
+            </div>
+            <div className="import-dialog-actions">
+              <button 
+                className={`import-dialog-submit ${importSuccess ? 'success' : ''}`}
+                onClick={handleImportTracker}
+                disabled={importSuccess}
+              >
+                {importSuccess ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                ) : (
+                  'Import'
+                )}
+              </button>
+              <button 
+                className="screen-selector-cancel"
+                onClick={() => {
+                  setShowImport(false);
+                  setImportData('');
+                  setImportError(null);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
