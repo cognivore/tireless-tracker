@@ -364,6 +364,36 @@
   100% { transform: scale(1); }
 }
 
+/* Paste Toast Notification */
+.paste-toast-notification {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background-color: var(--color-success, #28a745);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 3000;
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  font-weight: 500;
+  max-width: 90%;
+}
+
+.paste-toast-notification.visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.paste-toast-notification svg {
+  flex-shrink: 0;
+}
+
 @media (min-width: 768px) {
   .home-page {
     padding: var(--spacing-lg);

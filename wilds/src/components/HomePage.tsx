@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import TrackerArchive from './TrackerArchive';
 import * as storageService from '../services/storageService';
 import { decompressState } from '../utils/compressionUtils';
@@ -18,6 +18,19 @@ export default function HomePage({ onTrackerCreate, onTrackerSelect }: HomePageP
   const [importData, setImportData] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Function to show paste success toast
+  const [pasteSuccess, setPasteSuccess] = useState(false);
+  const [pasteMessage, setPasteMessage] = useState('');
+  
+  const showPasteSuccessToast = (trackerName: string) => {
+    setPasteMessage(`"${trackerName}" imported successfully`);
+    setPasteSuccess(true);
+    setTimeout(() => {
+      setPasteSuccess(false);
+    }, 3000);
+  };
 
   const loadTrackers = () => {
     // Get only active trackers
@@ -28,7 +41,61 @@ export default function HomePage({ onTrackerCreate, onTrackerSelect }: HomePageP
 
   useEffect(() => {
     loadTrackers();
-  }, []);
+    
+    // Add paste event listener
+    const handlePaste = (e: ClipboardEvent) => {
+      const pastedText = e.clipboardData?.getData('text');
+      if (pastedText && !showImport && !isCreating && !showArchive) {
+        try {
+          // Try to decompress and validate the pasted data
+          const importedState = decompressState(pastedText.trim());
+          if (importedState) {
+            e.preventDefault(); // Prevent default paste behavior
+            
+            // Check if the tracker already exists
+            const exists = storageService.trackerExists(importedState.trackerId);
+            
+            if (exists) {
+              // Show the import dialog with the pasted data
+              setImportData(pastedText.trim());
+              setShowImport(true);
+            } else {
+              // Import directly if no conflict
+              const success = storageService.importTracker(importedState);
+              if (success) {
+                showSuccessToast();
+                showPasteSuccessToast(importedState.trackerName);
+                loadTrackers();
+              } else {
+                setImportError('Failed to import tracker');
+                setShowImport(true);
+              }
+            }
+          }
+        } catch (error) {
+          // Not valid tracker data, ignore
+          console.log('Pasted content was not valid tracker data');
+        }
+      }
+    };
+    
+    // Add the event listener to the container
+    document.addEventListener('paste', handlePaste);
+    
+    return () => {
+      document.removeEventListener('paste', handlePaste);
+    };
+  }, [showImport, isCreating, showArchive]);
+  
+  const showSuccessToast = () => {
+    setImportSuccess(true);
+    setTimeout(() => {
+      setImportSuccess(false);
+      setShowImport(false);
+      setImportData('');
+      setImportError(null);
+    }, 1500);
+  };
 
   const handleCreateTracker = (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,16 +143,9 @@ export default function HomePage({ onTrackerCreate, onTrackerSelect }: HomePageP
           // Merge the states
           const mergedState = storageService.mergeTrackerState(importedState);
           if (mergedState) {
-            setImportSuccess(true);
+            showSuccessToast();
+            showPasteSuccessToast(`${importedState.trackerName} (merged)`);
             loadTrackers();
-            
-            // Reset success state after 1.5 seconds
-            setTimeout(() => {
-              setImportSuccess(false);
-              setShowImport(false);
-              setImportData('');
-              setImportError(null);
-            }, 1500);
           } else {
             setImportError('Failed to merge tracker data');
           }
@@ -94,16 +154,9 @@ export default function HomePage({ onTrackerCreate, onTrackerSelect }: HomePageP
         // Import as new
         const success = storageService.importTracker(importedState);
         if (success) {
-          setImportSuccess(true);
+          showSuccessToast();
+          showPasteSuccessToast(importedState.trackerName);
           loadTrackers();
-          
-          // Reset success state after 1.5 seconds
-          setTimeout(() => {
-            setImportSuccess(false);
-            setShowImport(false);
-            setImportData('');
-            setImportError(null);
-          }, 1500);
         } else {
           setImportError('Failed to import tracker');
         }
@@ -115,7 +168,7 @@ export default function HomePage({ onTrackerCreate, onTrackerSelect }: HomePageP
   };
 
   return (
-    <div className="home-page">
+    <div className="home-page" ref={containerRef}>
       <header className="home-header">
         <h1 className="home-title">Tracker</h1>
         <p className="home-subtitle">Create and manage your activity trackers</p>
@@ -265,6 +318,14 @@ export default function HomePage({ onTrackerCreate, onTrackerSelect }: HomePageP
           </div>
         </>
       )}
+
+      {/* Paste success toast notification */}
+      <div className={`paste-toast-notification ${pasteSuccess ? 'visible' : ''}`}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span>{pasteMessage}</span>
+      </div>
     </div>
   );
 } 
