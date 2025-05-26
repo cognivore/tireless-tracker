@@ -4,6 +4,9 @@ export interface ButtonData {
   count: number;
   clicks: ClickRecord[];
   archived?: boolean;
+  createdAt?: number;
+  lastModified?: number;
+  entityVersion?: number;
 }
 
 export interface ClickRecord {
@@ -17,6 +20,18 @@ export interface Screen {
   name: string;
   buttons: ButtonData[];
   archived?: boolean;
+  createdAt?: number;
+  lastModified?: number;
+  entityVersion?: number;
+}
+
+export interface EntityChange {
+  entityId: string;
+  entityType: 'screen' | 'button';
+  changeType: 'rename' | 'archive' | 'unarchive' | 'delete';
+  timestamp: number;
+  oldValue?: string;
+  newValue?: string;
 }
 
 export interface AppState {
@@ -25,4 +40,7 @@ export interface AppState {
   screens: Screen[];
   currentScreenId: string;
   archived?: boolean;
+  schemaVersion?: number;
+  changeLog?: EntityChange[];
+  lastModified?: number;
 } 

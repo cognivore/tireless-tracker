@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import HomePage from './components/HomePage';
 import TrackerApp from './components/TrackerApp';
 import ImportDialog from './components/ImportDialog';
-import ConfirmationDialog from './components/ConfirmationDialog';
 import * as storageService from './services/storageService';
 import { decompressState } from './utils/compressionUtils';
 import './App.css';

@@ -1,37 +1,9 @@
-import type { AppState, ButtonData, Screen } from '../types';
+import type { AppState, ButtonData, EntityChange, Screen } from '../types';
 import { mergeTrackerStates } from '../utils/mergeUtils';
+import { migrateAppState, needsMigration } from '../utils/migrationUtils';
 
 const STORAGE_KEY_PREFIX = 'wilds_tracker_';
 const ARCHIVE_KEY_PREFIX = 'wilds_archive_';
-
-const getDefaultState = (trackerName: string): AppState => {
-  const defaultScreen: Screen = {
-    id: 'screen-1',
-    name: 'Main Screen',
-    buttons: [
-      {
-        id: 'button-1',
-        text: 'Water',
-        count: 0,
-        clicks: []
-      },
-      {
-        id: 'button-2',
-        text: 'Exercise',
-        count: 0,
-        clicks: []
-      }
-    ]
-  };
-
-  return {
-    trackerId: crypto.randomUUID(),
-    trackerName,
-    screens: [defaultScreen],
-    currentScreenId: defaultScreen.id,
-    archived: false
-  };
-};
 
 export const loadData = (trackerId: string): AppState | null => {
   try {
@@ -44,7 +16,17 @@ export const loadData = (trackerId: string): AppState | null => {
     }
     
     if (data) {
-      return JSON.parse(data);
+      const state = JSON.parse(data) as AppState;
+      
+      // Check if migration is needed
+      if (needsMigration(state)) {
+        const migratedState = migrateAppState(state);
+        // Save the migrated state back
+        saveData(migratedState);
+        return migratedState;
+      }
+      
+      return state;
     }
     return null;
   } catch (error) {
@@ -55,6 +37,9 @@ export const loadData = (trackerId: string): AppState | null => {
 
 export const saveData = (data: AppState): void => {
   try {
+    // Set the last modified time
+    data.lastModified = Date.now();
+    
     const prefix = data.archived ? ARCHIVE_KEY_PREFIX : STORAGE_KEY_PREFIX;
     localStorage.setItem(`${prefix}${data.trackerId}`, JSON.stringify(data));
   } catch (error) {
@@ -63,7 +48,44 @@ export const saveData = (data: AppState): void => {
 };
 
 export const createTracker = (trackerName: string): AppState => {
-  const newState = getDefaultState(trackerName);
+  const defaultScreen: Screen = {
+    id: `screen-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+    name: 'Main Screen',
+    createdAt: Date.now(),
+    lastModified: Date.now(),
+    entityVersion: 1,
+    buttons: [
+      {
+        id: `button-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+        text: 'Water',
+        count: 0,
+        clicks: [],
+        createdAt: Date.now(),
+        lastModified: Date.now(),
+        entityVersion: 1
+      },
+      {
+        id: `button-${Date.now() + 1}-${Math.floor(Math.random() * 10000)}`,
+        text: 'Exercise',
+        count: 0,
+        clicks: [],
+        createdAt: Date.now(),
+        lastModified: Date.now(),
+        entityVersion: 1
+      }
+    ]
+  };
+
+  const newState: AppState = {
+    trackerId: crypto.randomUUID(),
+    trackerName,
+    screens: [defaultScreen],
+    currentScreenId: defaultScreen.id,
+    archived: false,
+    schemaVersion: 1,
+    changeLog: []
+  };
+  
   saveData(newState);
   return newState;
 };
@@ -161,11 +183,15 @@ export const addButton = (state: AppState, screenId: string, buttonText: string)
   const screen = newState.screens.find(s => s.id === screenId);
   
   if (screen) {
+    const now = Date.now();
     const newButton: ButtonData = {
-      id: `button-${Date.now()}`,
+      id: `button-${now}-${Math.floor(Math.random() * 10000)}`,
       text: buttonText,
       count: 0,
-      clicks: []
+      clicks: [],
+      createdAt: now,
+      lastModified: now,
+      entityVersion: 1
     };
     
     screen.buttons.push(newButton);
@@ -176,10 +202,14 @@ export const addButton = (state: AppState, screenId: string, buttonText: string)
 };
 
 export const addScreen = (state: AppState, screenName: string): AppState => {
+  const now = Date.now();
   const newScreen: Screen = {
-    id: `screen-${Date.now()}`,
+    id: `screen-${now}-${Math.floor(Math.random() * 10000)}`,
     name: screenName,
-    buttons: []
+    buttons: [],
+    createdAt: now,
+    lastModified: now,
+    entityVersion: 1
   };
   
   const newState = {
@@ -209,8 +239,20 @@ export const archiveScreen = (state: AppState, screenId: string): AppState => {
     // Mark the screen as archived
     newState.screens[screenIndex] = {
       ...newState.screens[screenIndex],
-      archived: true
+      archived: true,
+      lastModified: Date.now(),
+      entityVersion: (newState.screens[screenIndex].entityVersion || 1) + 1
     };
+    
+    // Log the change
+    const change: EntityChange = {
+      entityId: screenId,
+      entityType: 'screen',
+      changeType: 'archive',
+      timestamp: Date.now()
+    };
+    
+    newState.changeLog = [...(newState.changeLog || []), change];
     
     // Update current screen if the archived screen was active
     if (newState.currentScreenId === screenId) {
@@ -233,8 +275,20 @@ export const unarchiveScreen = (state: AppState, screenId: string): AppState => 
     // Mark the screen as not archived
     newState.screens[screenIndex] = {
       ...newState.screens[screenIndex],
-      archived: false
+      archived: false,
+      lastModified: Date.now(),
+      entityVersion: (newState.screens[screenIndex].entityVersion || 1) + 1
     };
+    
+    // Log the change
+    const change: EntityChange = {
+      entityId: screenId,
+      entityType: 'screen',
+      changeType: 'unarchive',
+      timestamp: Date.now()
+    };
+    
+    newState.changeLog = [...(newState.changeLog || []), change];
   }
   
   saveData(newState);
@@ -246,7 +300,22 @@ export const renameScreen = (state: AppState, screenId: string, newName: string)
   const screen = newState.screens.find(s => s.id === screenId);
   
   if (screen && newName.trim()) {
+    const oldName = screen.name;
     screen.name = newName.trim();
+    screen.lastModified = Date.now();
+    screen.entityVersion = (screen.entityVersion || 1) + 1;
+    
+    // Log the change
+    const change: EntityChange = {
+      entityId: screenId,
+      entityType: 'screen',
+      changeType: 'rename',
+      timestamp: Date.now(),
+      oldValue: oldName,
+      newValue: newName.trim()
+    };
+    
+    newState.changeLog = [...(newState.changeLog || []), change];
   }
   
   saveData(newState);
@@ -260,7 +329,22 @@ export const renameButton = (state: AppState, screenId: string, buttonId: string
   if (screen) {
     const button = screen.buttons.find(b => b.id === buttonId);
     if (button && newName.trim()) {
+      const oldName = button.text;
       button.text = newName.trim();
+      button.lastModified = Date.now();
+      button.entityVersion = (button.entityVersion || 1) + 1;
+      
+      // Log the change
+      const change: EntityChange = {
+        entityId: buttonId,
+        entityType: 'button',
+        changeType: 'rename',
+        timestamp: Date.now(),
+        oldValue: oldName,
+        newValue: newName.trim()
+      };
+      
+      newState.changeLog = [...(newState.changeLog || []), change];
     }
   }
   
@@ -282,8 +366,20 @@ export const archiveButton = (state: AppState, screenId: string, buttonId: strin
       // Mark the button as archived
       screen.buttons[buttonIndex] = {
         ...screen.buttons[buttonIndex],
-        archived: true
+        archived: true,
+        lastModified: Date.now(),
+        entityVersion: (screen.buttons[buttonIndex].entityVersion || 1) + 1
       };
+      
+      // Log the change
+      const change: EntityChange = {
+        entityId: buttonId,
+        entityType: 'button',
+        changeType: 'archive',
+        timestamp: Date.now()
+      };
+      
+      newState.changeLog = [...(newState.changeLog || []), change];
     }
   }
   
@@ -301,8 +397,20 @@ export const unarchiveButton = (state: AppState, screenId: string, buttonId: str
       // Mark the button as not archived
       screen.buttons[buttonIndex] = {
         ...screen.buttons[buttonIndex],
-        archived: false
+        archived: false,
+        lastModified: Date.now(),
+        entityVersion: (screen.buttons[buttonIndex].entityVersion || 1) + 1
       };
+      
+      // Log the change
+      const change: EntityChange = {
+        entityId: buttonId,
+        entityType: 'button',
+        changeType: 'unarchive',
+        timestamp: Date.now()
+      };
+      
+      newState.changeLog = [...(newState.changeLog || []), change];
     }
   }
   
@@ -363,6 +471,17 @@ export const deleteTrackerPermanently = (trackerId: string): void => {
 
 export const deleteScreenPermanently = (state: AppState, screenId: string): AppState => {
   const newState = { ...state };
+  
+  // Log the deletion before removing the screen
+  const change: EntityChange = {
+    entityId: screenId,
+    entityType: 'screen',
+    changeType: 'delete',
+    timestamp: Date.now()
+  };
+  
+  newState.changeLog = [...(newState.changeLog || []), change];
+  
   newState.screens = newState.screens.filter(s => s.id !== screenId);
   
   // Update current screen if the deleted screen was active
@@ -379,6 +498,16 @@ export const deleteButtonPermanently = (state: AppState, screenId: string, butto
   const screen = newState.screens.find(s => s.id === screenId);
   
   if (screen) {
+    // Log the deletion before removing the button
+    const change: EntityChange = {
+      entityId: buttonId,
+      entityType: 'button',
+      changeType: 'delete',
+      timestamp: Date.now()
+    };
+    
+    newState.changeLog = [...(newState.changeLog || []), change];
+    
     screen.buttons = screen.buttons.filter(b => b.id !== buttonId);
   }
   
