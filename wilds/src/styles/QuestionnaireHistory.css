@@ -234,6 +234,7 @@
   color: #374151;
   flex: 1;
   margin-right: 16px;
+  text-align: left;
 }
 
 .response-value {
