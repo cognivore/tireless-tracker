@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import type { AppState, QuestionResponse, QuestionScaleType } from '../types';
+import type { AppState, QuestionResponse, QuestionData } from '../types';
 import * as storageService from '../services/storageService';
+import { getScaleLabelsForType } from '../utils/questionnaireUtils';
 import '../styles/QuestionnaireForm.css';
 
 interface QuestionnaireFormProps {
@@ -74,30 +75,32 @@ export default function QuestionnaireForm({
     onClose();
   };
 
-  const getScaleOptions = (scaleType: QuestionScaleType) => {
-    switch (scaleType) {
+  const getScaleOptions = (question: QuestionData) => {
+    const labels = getScaleLabelsForType(question.scaleLabels, question.scaleType);
+
+    switch (question.scaleType) {
       case 'binary':
         return [
-          { value: 0, label: 'No', color: '#ef4444' },
-          { value: 1, label: 'Yes', color: '#22c55e' }
+          { value: 0, label: labels.binary!.negative, color: '#ef4444' },
+          { value: 1, label: labels.binary!.positive, color: '#22c55e' }
         ];
       case 'five-point':
         return [
-          { value: -2, label: 'Strongly Disagree', color: '#ef4444' },
-          { value: -1, label: 'Disagree', color: '#f97316' },
-          { value: 0, label: 'Neutral', color: '#6b7280' },
-          { value: 1, label: 'Agree', color: '#22c55e' },
-          { value: 2, label: 'Strongly Agree', color: '#16a34a' }
+          { value: -2, label: labels.fivePoint!.veryNegative, color: '#ef4444' },
+          { value: -1, label: labels.fivePoint!.negative, color: '#f97316' },
+          { value: 0, label: labels.fivePoint!.neutral, color: '#6b7280' },
+          { value: 1, label: labels.fivePoint!.positive, color: '#22c55e' },
+          { value: 2, label: labels.fivePoint!.veryPositive, color: '#16a34a' }
         ];
       case 'seven-point':
         return [
-          { value: -3, label: 'Strongly Disagree', color: '#dc2626' },
-          { value: -2, label: 'Disagree', color: '#ef4444' },
-          { value: -1, label: 'Somewhat Disagree', color: '#f97316' },
-          { value: 0, label: 'Neutral', color: '#6b7280' },
-          { value: 1, label: 'Somewhat Agree', color: '#65a30d' },
-          { value: 2, label: 'Agree', color: '#22c55e' },
-          { value: 3, label: 'Strongly Agree', color: '#16a34a' }
+          { value: -3, label: labels.sevenPoint!.veryNegative, color: '#dc2626' },
+          { value: -2, label: labels.sevenPoint!.negative, color: '#ef4444' },
+          { value: -1, label: labels.sevenPoint!.somewhatNegative, color: '#f97316' },
+          { value: 0, label: labels.sevenPoint!.neutral, color: '#6b7280' },
+          { value: 1, label: labels.sevenPoint!.somewhatPositive, color: '#65a30d' },
+          { value: 2, label: labels.sevenPoint!.positive, color: '#22c55e' },
+          { value: 3, label: labels.sevenPoint!.veryPositive, color: '#16a34a' }
         ];
     }
   };
@@ -165,7 +168,7 @@ export default function QuestionnaireForm({
 
         <div className="questionnaire-form-content">
           {activeQuestions.map(question => {
-            const options = getScaleOptions(question.scaleType);
+            const options = getScaleOptions(question);
             const currentValue = responses.get(question.id);
             const trackerData = getTrackerDataForQuestion(question.id);
 

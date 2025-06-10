@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { AppState, FilledQuestionnaire, QuestionScaleType } from '../types';
+import { getResponseLabel } from '../utils/questionnaireUtils';
 import '../styles/QuestionnaireHistory.css';
 
 interface QuestionnaireHistoryProps {
@@ -65,23 +66,7 @@ export default function QuestionnaireHistory({
 
 
 
-  const getResponseLabel = (value: number, scaleType: QuestionScaleType): string => {
-    switch (scaleType) {
-      case 'binary':
-        return value === 1 ? 'Yes' : 'No';
-      case 'five-point':
-        const fivePointLabels = ['Strongly Disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly Agree'];
-        return fivePointLabels[value + 2] || `${value > 0 ? '+' : ''}${value}`;
-      case 'seven-point':
-        const sevenPointLabels = [
-          'Strongly Disagree', 'Disagree', 'Somewhat Disagree', 'Neutral',
-          'Somewhat Agree', 'Agree', 'Strongly Agree'
-        ];
-        return sevenPointLabels[value + 3] || `${value > 0 ? '+' : ''}${value}`;
-      default:
-        return value.toString();
-    }
-  };
+
 
   const getResponseColor = (value: number, scaleType: QuestionScaleType): string => {
     if (scaleType === 'binary') {
@@ -240,7 +225,7 @@ export default function QuestionnaireHistory({
                                     className="response-value"
                                     style={{ color: getResponseColor(response.value, question.scaleType) }}
                                   >
-                                    {getResponseLabel(response.value, question.scaleType)}
+                                    {getResponseLabel(response.value, question.scaleType, question.scaleLabels)}
                                     {question.scaleType !== 'binary' && (
                                       <span className="response-numeric">
                                         ({response.value > 0 ? '+' : ''}{response.value})

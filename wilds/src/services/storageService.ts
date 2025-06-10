@@ -9,7 +9,8 @@ import type {
   QuestionResponse,
   FilledQuestionnaire,
   NotificationData,
-  ClickRecord
+  ClickRecord,
+  ScaleLabels
 } from '../types';
 import { mergeTrackerStates } from '../utils/mergeUtils';
 import { migrateAppState, needsMigration } from '../utils/migrationUtils';
@@ -903,7 +904,8 @@ export const addQuestion = (
   questionnaireId: string,
   text: string,
   scaleType: QuestionScaleType,
-  subscribedButtonIds: string[] = []
+  subscribedButtonIds: string[] = [],
+  scaleLabels?: ScaleLabels
 ): AppState => {
   const newState = { ...state };
   const questionnaire = newState.questionnaires?.find(q => q.id === questionnaireId);
@@ -916,6 +918,7 @@ export const addQuestion = (
       scaleType,
       order: questionnaire.questions.length,
       subscribedButtonIds: [...subscribedButtonIds],
+      scaleLabels,
       archived: false,
       createdAt: now,
       lastModified: now,

@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
-import type { AppState, QuestionnaireConfig, QuestionData, QuestionScaleType } from '../types';
+import type { AppState, QuestionnaireConfig, QuestionData, QuestionScaleType, ScaleLabels } from '../types';
+import { getDefaultScaleLabels } from '../utils/questionnaireUtils';
 import '../styles/QuestionnaireEditor.css';
 
 interface QuestionnaireEditorProps {
   appState: AppState;
   questionnaireId: string;
   onUpdateQuestionnaire: (questionnaireId: string, updates: Partial<QuestionnaireConfig>) => void;
-  onAddQuestion: (questionnaireId: string, text: string, scaleType: QuestionScaleType, subscribedButtonIds: string[]) => void;
+  onAddQuestion: (questionnaireId: string, text: string, scaleType: QuestionScaleType, subscribedButtonIds: string[], scaleLabels?: ScaleLabels) => void;
   onUpdateQuestion: (questionnaireId: string, questionId: string, updates: Partial<QuestionData>) => void;
   onReorderQuestions: (questionnaireId: string, sourceIndex: number, destinationIndex: number) => void;
   onArchiveQuestion: (questionnaireId: string, questionId: string) => void;
@@ -45,6 +46,8 @@ export default function QuestionnaireEditor({
   const [newQuestionText, setNewQuestionText] = useState('');
   const [newQuestionScale, setNewQuestionScale] = useState<QuestionScaleType>('five-point');
   const [newQuestionButtonIds, setNewQuestionButtonIds] = useState<string[]>([]);
+  const [newQuestionScaleLabels, setNewQuestionScaleLabels] = useState<ScaleLabels>(getDefaultScaleLabels('five-point'));
+  const [showScaleLabels, setShowScaleLabels] = useState(false);
 
   useEffect(() => {
     if (questionnaire) {
@@ -92,11 +95,14 @@ export default function QuestionnaireEditor({
         questionnaireId,
         newQuestionText.trim(),
         newQuestionScale,
-        newQuestionButtonIds
+        newQuestionButtonIds,
+        newQuestionScaleLabels
       );
       setNewQuestionText('');
       setNewQuestionScale('five-point');
       setNewQuestionButtonIds([]);
+      setNewQuestionScaleLabels(getDefaultScaleLabels('five-point'));
+      setShowScaleLabels(false);
       setShowAddQuestion(false);
     }
   };
@@ -106,6 +112,8 @@ export default function QuestionnaireEditor({
     setNewQuestionText(question.text);
     setNewQuestionScale(question.scaleType);
     setNewQuestionButtonIds(question.subscribedButtonIds);
+    setNewQuestionScaleLabels(question.scaleLabels || getDefaultScaleLabels(question.scaleType));
+    setShowScaleLabels(false);
     setShowAddQuestion(true);
   };
 
@@ -114,12 +122,15 @@ export default function QuestionnaireEditor({
       onUpdateQuestion(questionnaireId, editingQuestionId, {
         text: newQuestionText.trim(),
         scaleType: newQuestionScale,
-        subscribedButtonIds: newQuestionButtonIds
+        subscribedButtonIds: newQuestionButtonIds,
+        scaleLabels: newQuestionScaleLabels
       });
       setEditingQuestionId(null);
       setNewQuestionText('');
       setNewQuestionScale('five-point');
       setNewQuestionButtonIds([]);
+      setNewQuestionScaleLabels(getDefaultScaleLabels('five-point'));
+      setShowScaleLabels(false);
       setShowAddQuestion(false);
     }
   };
@@ -129,7 +140,28 @@ export default function QuestionnaireEditor({
     setNewQuestionText('');
     setNewQuestionScale('five-point');
     setNewQuestionButtonIds([]);
+    setNewQuestionScaleLabels(getDefaultScaleLabels('five-point'));
+    setShowScaleLabels(false);
     setShowAddQuestion(false);
+  };
+
+  const handleScaleTypeChange = (newScaleType: QuestionScaleType) => {
+    setNewQuestionScale(newScaleType);
+    setNewQuestionScaleLabels(getDefaultScaleLabels(newScaleType));
+  };
+
+  const updateScaleLabel = (scaleType: QuestionScaleType, labelKey: string, value: string) => {
+    setNewQuestionScaleLabels(prev => {
+      const updated = { ...prev };
+      if (scaleType === 'binary' && updated.binary) {
+        updated.binary = { ...updated.binary, [labelKey]: value };
+      } else if (scaleType === 'five-point' && updated.fivePoint) {
+        updated.fivePoint = { ...updated.fivePoint, [labelKey]: value };
+      } else if (scaleType === 'seven-point' && updated.sevenPoint) {
+        updated.sevenPoint = { ...updated.sevenPoint, [labelKey]: value };
+      }
+      return updated;
+    });
   };
 
   const handleDragEnd = (result: DropResult) => {
@@ -149,8 +181,6 @@ export default function QuestionnaireEditor({
       case 'seven-point': return '7-point (-3 to +3)';
     }
   };
-
-
 
   const availableButtons = appState.screens
     .filter(screen => !screen.archived)
@@ -417,12 +447,184 @@ export default function QuestionnaireEditor({
                     <select
                       id="question-scale"
                       value={newQuestionScale}
-                      onChange={(e) => setNewQuestionScale(e.target.value as QuestionScaleType)}
+                      onChange={(e) => handleScaleTypeChange(e.target.value as QuestionScaleType)}
                     >
                       <option value="binary">Yes/No</option>
                       <option value="five-point">5-point scale (-2 to +2)</option>
                       <option value="seven-point">7-point scale (-3 to +3)</option>
                     </select>
+                  </div>
+
+                  <div className="form-group">
+                    <div className="scale-labels-header">
+                      <label>Scale Labels</label>
+                      <button
+                        type="button"
+                        className="toggle-scale-labels"
+                        onClick={() => setShowScaleLabels(!showScaleLabels)}
+                      >
+                        {showScaleLabels ? 'Hide Labels' : 'Customize Labels'}
+                      </button>
+                    </div>
+
+                    {showScaleLabels && (
+                      <div className="scale-labels-editor">
+                        {newQuestionScale === 'binary' && newQuestionScaleLabels.binary && (
+                          <div className="binary-labels">
+                            <div className="label-input-group">
+                              <label htmlFor="binary-positive">Positive (Yes)</label>
+                              <input
+                                id="binary-positive"
+                                type="text"
+                                value={newQuestionScaleLabels.binary.positive}
+                                onChange={(e) => updateScaleLabel('binary', 'positive', e.target.value)}
+                                placeholder="Yes"
+                              />
+                            </div>
+                            <div className="label-input-group">
+                              <label htmlFor="binary-negative">Negative (No)</label>
+                              <input
+                                id="binary-negative"
+                                type="text"
+                                value={newQuestionScaleLabels.binary.negative}
+                                onChange={(e) => updateScaleLabel('binary', 'negative', e.target.value)}
+                                placeholder="No"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {newQuestionScale === 'five-point' && newQuestionScaleLabels.fivePoint && (
+                          <div className="five-point-labels">
+                            <div className="label-input-group">
+                              <label htmlFor="five-very-negative">Very Negative (-2)</label>
+                              <input
+                                id="five-very-negative"
+                                type="text"
+                                value={newQuestionScaleLabels.fivePoint.veryNegative}
+                                onChange={(e) => updateScaleLabel('five-point', 'veryNegative', e.target.value)}
+                                placeholder="Strongly Disagree"
+                              />
+                            </div>
+                            <div className="label-input-group">
+                              <label htmlFor="five-negative">Negative (-1)</label>
+                              <input
+                                id="five-negative"
+                                type="text"
+                                value={newQuestionScaleLabels.fivePoint.negative}
+                                onChange={(e) => updateScaleLabel('five-point', 'negative', e.target.value)}
+                                placeholder="Disagree"
+                              />
+                            </div>
+                            <div className="label-input-group">
+                              <label htmlFor="five-neutral">Neutral (0)</label>
+                              <input
+                                id="five-neutral"
+                                type="text"
+                                value={newQuestionScaleLabels.fivePoint.neutral}
+                                onChange={(e) => updateScaleLabel('five-point', 'neutral', e.target.value)}
+                                placeholder="Neutral"
+                              />
+                            </div>
+                            <div className="label-input-group">
+                              <label htmlFor="five-positive">Positive (+1)</label>
+                              <input
+                                id="five-positive"
+                                type="text"
+                                value={newQuestionScaleLabels.fivePoint.positive}
+                                onChange={(e) => updateScaleLabel('five-point', 'positive', e.target.value)}
+                                placeholder="Agree"
+                              />
+                            </div>
+                            <div className="label-input-group">
+                              <label htmlFor="five-very-positive">Very Positive (+2)</label>
+                              <input
+                                id="five-very-positive"
+                                type="text"
+                                value={newQuestionScaleLabels.fivePoint.veryPositive}
+                                onChange={(e) => updateScaleLabel('five-point', 'veryPositive', e.target.value)}
+                                placeholder="Strongly Agree"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {newQuestionScale === 'seven-point' && newQuestionScaleLabels.sevenPoint && (
+                          <div className="seven-point-labels">
+                            <div className="label-input-group">
+                              <label htmlFor="seven-very-negative">Very Negative (-3)</label>
+                              <input
+                                id="seven-very-negative"
+                                type="text"
+                                value={newQuestionScaleLabels.sevenPoint.veryNegative}
+                                onChange={(e) => updateScaleLabel('seven-point', 'veryNegative', e.target.value)}
+                                placeholder="Strongly Disagree"
+                              />
+                            </div>
+                            <div className="label-input-group">
+                              <label htmlFor="seven-negative">Negative (-2)</label>
+                              <input
+                                id="seven-negative"
+                                type="text"
+                                value={newQuestionScaleLabels.sevenPoint.negative}
+                                onChange={(e) => updateScaleLabel('seven-point', 'negative', e.target.value)}
+                                placeholder="Disagree"
+                              />
+                            </div>
+                            <div className="label-input-group">
+                              <label htmlFor="seven-somewhat-negative">Somewhat Negative (-1)</label>
+                              <input
+                                id="seven-somewhat-negative"
+                                type="text"
+                                value={newQuestionScaleLabels.sevenPoint.somewhatNegative}
+                                onChange={(e) => updateScaleLabel('seven-point', 'somewhatNegative', e.target.value)}
+                                placeholder="Somewhat Disagree"
+                              />
+                            </div>
+                            <div className="label-input-group">
+                              <label htmlFor="seven-neutral">Neutral (0)</label>
+                              <input
+                                id="seven-neutral"
+                                type="text"
+                                value={newQuestionScaleLabels.sevenPoint.neutral}
+                                onChange={(e) => updateScaleLabel('seven-point', 'neutral', e.target.value)}
+                                placeholder="Neutral"
+                              />
+                            </div>
+                            <div className="label-input-group">
+                              <label htmlFor="seven-somewhat-positive">Somewhat Positive (+1)</label>
+                              <input
+                                id="seven-somewhat-positive"
+                                type="text"
+                                value={newQuestionScaleLabels.sevenPoint.somewhatPositive}
+                                onChange={(e) => updateScaleLabel('seven-point', 'somewhatPositive', e.target.value)}
+                                placeholder="Somewhat Agree"
+                              />
+                            </div>
+                            <div className="label-input-group">
+                              <label htmlFor="seven-positive">Positive (+2)</label>
+                              <input
+                                id="seven-positive"
+                                type="text"
+                                value={newQuestionScaleLabels.sevenPoint.positive}
+                                onChange={(e) => updateScaleLabel('seven-point', 'positive', e.target.value)}
+                                placeholder="Agree"
+                              />
+                            </div>
+                            <div className="label-input-group">
+                              <label htmlFor="seven-very-positive">Very Positive (+3)</label>
+                              <input
+                                id="seven-very-positive"
+                                type="text"
+                                value={newQuestionScaleLabels.sevenPoint.veryPositive}
+                                onChange={(e) => updateScaleLabel('seven-point', 'veryPositive', e.target.value)}
+                                placeholder="Strongly Agree"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="form-group">

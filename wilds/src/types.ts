@@ -37,12 +37,36 @@ export interface EntityChange {
 // Questionnaire Types
 export type QuestionScaleType = 'binary' | 'five-point' | 'seven-point';
 
+export interface ScaleLabels {
+  binary?: {
+    positive: string; // Default: "Yes"
+    negative: string; // Default: "No"
+  };
+  fivePoint?: {
+    veryNegative: string; // Default: "Strongly Disagree"
+    negative: string; // Default: "Disagree"
+    neutral: string; // Default: "Neutral"
+    positive: string; // Default: "Agree"
+    veryPositive: string; // Default: "Strongly Agree"
+  };
+  sevenPoint?: {
+    veryNegative: string; // Default: "Strongly Disagree"
+    negative: string; // Default: "Disagree"
+    somewhatNegative: string; // Default: "Somewhat Disagree"
+    neutral: string; // Default: "Neutral"
+    somewhatPositive: string; // Default: "Somewhat Agree"
+    positive: string; // Default: "Agree"
+    veryPositive: string; // Default: "Strongly Agree"
+  };
+}
+
 export interface QuestionData {
   id: string;
   text: string;
   scaleType: QuestionScaleType;
   order: number;
   subscribedButtonIds: string[]; // Button IDs this question tracks
+  scaleLabels?: ScaleLabels; // Custom labels for the scale
   archived?: boolean;
   createdAt?: number;
   lastModified?: number;

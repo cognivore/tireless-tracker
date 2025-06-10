@@ -17,7 +17,7 @@ import { DragDropContext } from '@hello-pangea/dnd';
 import type { DropResult, DragStart } from '@hello-pangea/dnd';
 import * as storageService from '../services/storageService';
 import { compressState } from '../utils/compressionUtils';
-import type { AppState, QuestionnaireConfig, QuestionData, QuestionScaleType, QuestionResponse } from '../types';
+import type { AppState, QuestionnaireConfig, QuestionData, QuestionScaleType, QuestionResponse, ScaleLabels } from '../types';
 import '../styles/TrackerApp.css';
 
 // Create a ShareDialog component with proper overlay styling
@@ -284,9 +284,9 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
     }
   };
 
-  const handleAddQuestion = (questionnaireId: string, text: string, scaleType: QuestionScaleType, subscribedButtonIds: string[]) => {
+  const handleAddQuestion = (questionnaireId: string, text: string, scaleType: QuestionScaleType, subscribedButtonIds: string[], scaleLabels?: ScaleLabels) => {
     if (!appState) return;
-    const newState = storageService.addQuestion(appState, questionnaireId, text, scaleType, subscribedButtonIds);
+    const newState = storageService.addQuestion(appState, questionnaireId, text, scaleType, subscribedButtonIds, scaleLabels);
     setAppState(newState);
   };
 
