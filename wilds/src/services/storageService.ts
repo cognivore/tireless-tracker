@@ -1233,3 +1233,77 @@ export const getTrackerDataForTimeRange = (
 
   return result;
 };
+
+/**
+ * Updates a response in a filled questionnaire with edit tracking
+ */
+export const updateQuestionnaireResponse = (
+  state: AppState,
+  filledQuestionnaireId: string,
+  questionId: string,
+  newValue: number
+): AppState => {
+  const newState = { ...state };
+  const filledQuestionnaires = [...newState.filledQuestionnaires];
+
+  const questionnaireIndex = filledQuestionnaires.findIndex(fq => fq.id === filledQuestionnaireId);
+  if (questionnaireIndex === -1) {
+    return state; // Questionnaire not found
+  }
+
+  const questionnaire = { ...filledQuestionnaires[questionnaireIndex] };
+  const responses = [...questionnaire.responses];
+
+  const responseIndex = responses.findIndex(r => r.questionId === questionId);
+  if (responseIndex === -1) {
+    return state; // Response not found
+  }
+
+  const currentResponse = responses[responseIndex];
+  const previousValue = currentResponse.value;
+
+  if (previousValue === newValue) {
+    return state; // No change
+  }
+
+  const now = Date.now();
+
+  // Update the response with edit tracking
+  responses[responseIndex] = {
+    ...currentResponse,
+    value: newValue,
+    lastModified: now,
+    editHistory: [
+      ...(currentResponse.editHistory || []),
+      {
+        timestamp: now,
+        previousValue,
+        newValue
+      }
+    ]
+  };
+
+  questionnaire.responses = responses;
+  questionnaire.lastModified = now;
+  filledQuestionnaires[questionnaireIndex] = questionnaire;
+
+  newState.filledQuestionnaires = filledQuestionnaires;
+
+  // Add change log entry for the edit
+  const changeLogEntry: EntityChange = {
+    entityId: filledQuestionnaireId,
+    entityType: 'response',
+    changeType: 'edit',
+    timestamp: now,
+    questionnaireResponseId: filledQuestionnaireId,
+    questionId,
+    previousValue,
+    newResponseValue: newValue
+  };
+
+  newState.changeLog = [...(newState.changeLog || []), changeLogEntry];
+  newState.lastModified = now;
+
+  saveData(newState);
+  return newState;
+};

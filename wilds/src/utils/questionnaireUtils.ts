@@ -1,4 +1,4 @@
-import type { QuestionScaleType, ScaleLabels } from '../types';
+import type { QuestionScaleType, ScaleLabels, FilledQuestionnaire } from '../types';
 
 export const getDefaultScaleLabels = (scaleType: QuestionScaleType): ScaleLabels => {
   switch (scaleType) {
@@ -122,3 +122,55 @@ export const wasQuestionAvailableAtTime = (question: any, filledAt: number): boo
   // Question existed if it was created before the questionnaire was filled
   return question.createdAt <= filledAt;
 };
+
+/**
+ * Calculates the optimal time window for showing tracker data around a questionnaire filling
+ * Uses the smaller of:
+ * A. Time till the previous filling of the questionnaire
+ * B. Time till the next filling of the questionnaire
+ * Falls back to 4 hours if no other fillings exist
+ */
+export function calculateTrackerTimeWindow(
+  currentFilling: FilledQuestionnaire,
+  allFillings: FilledQuestionnaire[]
+): { startTime: number; endTime: number } {
+  const currentTime = currentFilling.filledAt;
+  const defaultWindow = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
+
+  // Find all other fillings of the same questionnaire, sorted by time
+  const sameQuestionnaire = allFillings
+    .filter(f => f.questionnaireId === currentFilling.questionnaireId && f.id !== currentFilling.id)
+    .sort((a, b) => a.filledAt - b.filledAt);
+
+  // Find the previous and next fillings
+  const previousFilling = sameQuestionnaire
+    .filter(f => f.filledAt < currentTime)
+    .pop(); // Last one before current
+
+  const nextFilling = sameQuestionnaire
+    .find(f => f.filledAt > currentTime); // First one after current
+
+  // Calculate time gaps
+  let beforeWindow = defaultWindow;
+  let afterWindow = defaultWindow;
+
+  if (previousFilling) {
+    const gapToPrevious = currentTime - previousFilling.filledAt;
+    beforeWindow = Math.min(beforeWindow, Math.floor(gapToPrevious / 2));
+  }
+
+  if (nextFilling) {
+    const gapToNext = nextFilling.filledAt - currentTime;
+    afterWindow = Math.min(afterWindow, Math.floor(gapToNext / 2));
+  }
+
+  // Ensure minimum window of 30 minutes on each side
+  const minimumWindow = 30 * 60 * 1000; // 30 minutes
+  beforeWindow = Math.max(beforeWindow, minimumWindow);
+  afterWindow = Math.max(afterWindow, minimumWindow);
+
+  return {
+    startTime: currentTime - beforeWindow,
+    endTime: currentTime + afterWindow
+  };
+}

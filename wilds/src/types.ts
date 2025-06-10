@@ -27,11 +27,16 @@ export interface Screen {
 
 export interface EntityChange {
   entityId: string;
-  entityType: 'screen' | 'button' | 'questionnaire' | 'question';
-  changeType: 'rename' | 'archive' | 'unarchive' | 'delete' | 'reorder' | 'move' | 'create' | 'update';
+  entityType: 'screen' | 'button' | 'questionnaire' | 'question' | 'response';
+  changeType: 'rename' | 'archive' | 'unarchive' | 'delete' | 'reorder' | 'move' | 'create' | 'update' | 'edit';
   timestamp: number;
   oldValue?: string;
   newValue?: string;
+  // For response edits
+  questionnaireResponseId?: string;
+  questionId?: string;
+  previousValue?: number;
+  newResponseValue?: number;
 }
 
 // Questionnaire Types
@@ -94,6 +99,12 @@ export interface QuestionnaireConfig {
 export interface QuestionResponse {
   questionId: string;
   value: number; // -3 to 3 for seven-point, -2 to 2 for five-point, 0 or 1 for binary
+  lastModified?: number; // Track when this response was last edited
+  editHistory?: {
+    timestamp: number;
+    previousValue: number;
+    newValue: number;
+  }[];
 }
 
 export interface FilledQuestionnaire {
@@ -104,6 +115,7 @@ export interface FilledQuestionnaire {
   filledAt: number;
   date: string;
   notes?: string;
+  lastModified?: number; // Track when this filled questionnaire was last edited
 }
 
 export interface NotificationData {

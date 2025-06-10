@@ -330,6 +330,22 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
     }, 3000);
   };
 
+  const handleUpdateQuestionnaireResponse = (filledQuestionnaireId: string, questionId: string, newValue: number) => {
+    if (!appState) return;
+    const newState = storageService.updateQuestionnaireResponse(appState, filledQuestionnaireId, questionId, newValue);
+    setAppState(newState);
+
+    // Show success toast
+    setToast({
+      message: 'Response updated successfully!',
+      visible: true
+    });
+
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, visible: false }));
+    }, 3000);
+  };
+
   const handleDismissNotification = (notificationId: string) => {
     if (!appState) return;
     const newState = storageService.dismissNotification(appState, notificationId);
@@ -650,6 +666,7 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
           appState={appState}
           questionnaireId={viewingQuestionnaireHistoryId}
           onClose={handleCloseQuestionnaireModals}
+          onUpdateResponse={handleUpdateQuestionnaireResponse}
         />
       )}
 

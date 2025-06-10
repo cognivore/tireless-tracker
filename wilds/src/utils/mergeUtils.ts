@@ -1,4 +1,4 @@
-import type { AppState, ButtonData, ClickRecord, EntityChange, Screen, QuestionnaireConfig, QuestionData, FilledQuestionnaire, NotificationData } from '../types';
+import type { AppState, ButtonData, ClickRecord, EntityChange, Screen, QuestionnaireConfig, QuestionData, FilledQuestionnaire, NotificationData, QuestionResponse } from '../types';
 
 /**
  * Removes paired increment/decrement clicks, leaving only net increments
@@ -373,7 +373,7 @@ function mergeQuestionnaires(questionnaires1: QuestionnaireConfig[], questionnai
 }
 
 /**
- * Merges filled questionnaires from two arrays, avoiding duplicates
+ * Merges filled questionnaires from two arrays with response edit conflict resolution
  */
 function mergeFilledQuestionnaires(filled1: FilledQuestionnaire[], filled2: FilledQuestionnaire[]): FilledQuestionnaire[] {
   const filledMap = new Map<string, FilledQuestionnaire>();
@@ -381,14 +381,67 @@ function mergeFilledQuestionnaires(filled1: FilledQuestionnaire[], filled2: Fill
   // Combine all filled questionnaires
   const allFilled = [...filled1, ...filled2];
 
-  // Deduplicate by ID (filled questionnaires should be immutable once created)
+  // Merge questionnaires with LWW for edited responses
   allFilled.forEach(filled => {
     if (!filledMap.has(filled.id)) {
       filledMap.set(filled.id, filled);
+    } else {
+      // Merge responses using LWW strategy for edits
+      const existing = filledMap.get(filled.id)!;
+      const mergedResponses = mergeQuestionnaireResponses(existing.responses, filled.responses);
+
+      const mergedQuestionnaire: FilledQuestionnaire = {
+        ...existing,
+        responses: mergedResponses,
+        lastModified: Math.max(existing.lastModified || 0, filled.lastModified || 0),
+        // Keep notes from the most recently modified version
+        notes: (filled.lastModified || 0) > (existing.lastModified || 0) ? filled.notes : existing.notes
+      };
+
+      filledMap.set(filled.id, mergedQuestionnaire);
     }
   });
 
   return Array.from(filledMap.values());
+}
+
+/**
+ * Merges question responses using LWW strategy for edits
+ */
+function mergeQuestionnaireResponses(responses1: QuestionResponse[], responses2: QuestionResponse[]): QuestionResponse[] {
+  const responseMap = new Map<string, QuestionResponse>();
+
+  // Process first set of responses
+  responses1.forEach(response => {
+    responseMap.set(response.questionId, response);
+  });
+
+  // Process second set, applying LWW for conflicts
+  responses2.forEach(response => {
+    if (responseMap.has(response.questionId)) {
+      const existing = responseMap.get(response.questionId)!;
+
+      // Use LWW: keep the response with the latest modification time
+      const newerResponse = (response.lastModified || 0) > (existing.lastModified || 0)
+        ? response
+        : existing;
+
+      // Merge edit histories
+      const mergedEditHistory = [
+        ...(existing.editHistory || []),
+        ...(response.editHistory || [])
+      ].sort((a, b) => a.timestamp - b.timestamp);
+
+      responseMap.set(response.questionId, {
+        ...newerResponse,
+        editHistory: mergedEditHistory.length > 0 ? mergedEditHistory : undefined
+      });
+    } else {
+      responseMap.set(response.questionId, response);
+    }
+  });
+
+  return Array.from(responseMap.values());
 }
 
 /**

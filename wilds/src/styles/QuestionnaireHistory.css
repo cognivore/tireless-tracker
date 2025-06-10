@@ -228,6 +228,10 @@
   border: 1px solid #e5e7eb;
 }
 
+.response-item-container {
+  margin-bottom: 8px;
+}
+
 .response-question {
   font-size: 0.875rem;
   font-weight: 500;
@@ -235,6 +239,46 @@
   flex: 1;
   margin-right: 16px;
   text-align: left;
+}
+
+.response-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-right: 12px;
+}
+
+.log-button,
+.edit-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: #374151;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.log-button:hover,
+.edit-button:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.edit-button {
+  background: #fef3c7;
+  border-color: #fbbf24;
+  color: #92400e;
+}
+
+.edit-button:hover {
+  background: #fde68a;
+  border-color: #f59e0b;
 }
 
 .response-value {
@@ -245,6 +289,128 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
+  min-width: 120px;
+}
+
+.edit-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.edit-select {
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: white;
+  min-width: 120px;
+}
+
+.edit-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.save-edit,
+.cancel-edit {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.save-edit {
+  background: #22c55e;
+  color: white;
+}
+
+.save-edit:hover {
+  background: #16a34a;
+}
+
+.cancel-edit {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.cancel-edit:hover {
+  background: #d1d5db;
+}
+
+.edited-indicator {
+  font-size: 0.7rem;
+  color: #f59e0b;
+  font-style: italic;
+  font-weight: normal;
+}
+
+.inline-logs {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+}
+
+.inline-logs h5 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 12px 0;
+}
+
+.log-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.log-button-section h6 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 6px 0;
+}
+
+.log-clicks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.log-click {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+.log-time {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.log-action {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #22c55e;
+}
+
+.no-logs {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-style: italic;
+  text-align: center;
+  margin: 0;
+  padding: 8px;
 }
 
 .response-numeric {

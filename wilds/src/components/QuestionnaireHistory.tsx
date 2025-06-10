@@ -1,22 +1,29 @@
 import { useState, useMemo } from 'react';
-import type { AppState, FilledQuestionnaire, QuestionScaleType } from '../types';
-import { getResponseLabel, wasQuestionAvailableAtTime } from '../utils/questionnaireUtils';
+import type { AppState, FilledQuestionnaire, QuestionScaleType, QuestionResponse } from '../types';
+import { getResponseLabel, wasQuestionAvailableAtTime, getScaleLabelsForType, calculateTrackerTimeWindow } from '../utils/questionnaireUtils';
+import { removePairedClicks } from '../utils/mergeUtils';
+import * as storageService from '../services/storageService';
 import '../styles/QuestionnaireHistory.css';
 
 interface QuestionnaireHistoryProps {
   appState: AppState;
   questionnaireId?: string; // If provided, only show history for this questionnaire
   onClose: () => void;
+  onUpdateResponse?: (filledQuestionnaireId: string, questionId: string, newValue: number) => void;
 }
 
 export default function QuestionnaireHistory({
   appState,
   questionnaireId,
-  onClose
+  onClose,
+  onUpdateResponse
 }: QuestionnaireHistoryProps) {
   const [selectedEntry, setSelectedEntry] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<'all' | 'week' | 'month' | 'quarter'>('month');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
+  const [editingResponse, setEditingResponse] = useState<{ entryId: string; questionId: string } | null>(null);
+  const [tempEditValue, setTempEditValue] = useState<number>(0);
 
   const questionnaire = questionnaireId
     ? appState.questionnaires?.find(q => q.id === questionnaireId)
@@ -64,10 +71,6 @@ export default function QuestionnaireHistory({
     return entries;
   }, [appState.filledQuestionnaires, questionnaireId, timeFilter, sortOrder]);
 
-
-
-
-
   const getResponseColor = (value: number, scaleType: QuestionScaleType): string => {
     if (scaleType === 'binary') {
       return value === 1 ? '#22c55e' : '#ef4444';
@@ -82,6 +85,91 @@ export default function QuestionnaireHistory({
     if (normalized < 0.2) return '#6b7280';
     if (normalized < 0.5) return '#22c55e';
     return '#16a34a';
+  };
+
+  const getTrackerDataForEntry = (entry: FilledQuestionnaire, questionId: string) => {
+    const question = selectedQuestionnaireConfig?.questions.find(q => q.id === questionId);
+    if (!question || question.subscribedButtonIds.length === 0) {
+      return null;
+    }
+
+    // Calculate optimal time window based on surrounding questionnaire fillings
+    const { startTime, endTime } = calculateTrackerTimeWindow(entry, appState.filledQuestionnaires || []);
+
+    return storageService.getTrackerDataForTimeRange(
+      appState,
+      question.subscribedButtonIds,
+      startTime,
+      endTime
+    );
+  };
+
+  const formatLogDate = (timestamp: number): string => {
+    return new Date(timestamp).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  };
+
+  const toggleLogExpansion = (entryId: string, questionId: string) => {
+    const key = `${entryId}-${questionId}`;
+    const newExpanded = new Set(expandedLogs);
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key);
+    } else {
+      newExpanded.add(key);
+    }
+    setExpandedLogs(newExpanded);
+  };
+
+  const startEditing = (entryId: string, questionId: string, currentValue: number) => {
+    setEditingResponse({ entryId, questionId });
+    setTempEditValue(currentValue);
+  };
+
+  const cancelEditing = () => {
+    setEditingResponse(null);
+    setTempEditValue(0);
+  };
+
+  const saveEdit = () => {
+    if (editingResponse && onUpdateResponse) {
+      onUpdateResponse(editingResponse.entryId, editingResponse.questionId, tempEditValue);
+    }
+    cancelEditing();
+  };
+
+  const getScaleOptions = (scaleType: QuestionScaleType, scaleLabels?: any) => {
+    const labels = getScaleLabelsForType(scaleLabels, scaleType);
+
+    switch (scaleType) {
+      case 'binary':
+        return [
+          { value: 0, label: labels.binary!.negative },
+          { value: 1, label: labels.binary!.positive }
+        ];
+      case 'five-point':
+        return [
+          { value: -2, label: labels.fivePoint!.veryNegative },
+          { value: -1, label: labels.fivePoint!.negative },
+          { value: 0, label: labels.fivePoint!.neutral },
+          { value: 1, label: labels.fivePoint!.positive },
+          { value: 2, label: labels.fivePoint!.veryPositive }
+        ];
+      case 'seven-point':
+        return [
+          { value: -3, label: labels.sevenPoint!.veryNegative },
+          { value: -2, label: labels.sevenPoint!.negative },
+          { value: -1, label: labels.sevenPoint!.somewhatNegative },
+          { value: 0, label: labels.sevenPoint!.neutral },
+          { value: 1, label: labels.sevenPoint!.somewhatPositive },
+          { value: 2, label: labels.sevenPoint!.positive },
+          { value: 3, label: labels.sevenPoint!.veryPositive }
+        ];
+    }
   };
 
   const groupEntriesByDate = (entries: FilledQuestionnaire[]) => {
@@ -218,36 +306,141 @@ export default function QuestionnaireHistory({
                               .map(question => {
                                 const response = entry.responses.find(r => r.questionId === question.id);
                                 const wasAvailable = wasQuestionAvailableAtTime(question, entry.filledAt);
+                                const logKey = `${entry.id}-${question.id}`;
+                                const isLogExpanded = expandedLogs.has(logKey);
+                                const isEditing = editingResponse?.entryId === entry.id && editingResponse?.questionId === question.id;
+                                const trackerData = getTrackerDataForEntry(entry, question.id);
 
                                 return (
-                                  <div key={question.id} className="response-item">
-                                    <div className="response-question">
-                                      {question.text}
-                                    </div>
-                                    <div className="response-value">
-                                      {response && wasAvailable ? (
-                                        <>
-                                          <span
-                                            style={{ color: getResponseColor(response.value, question.scaleType) }}
+                                  <div key={question.id} className="response-item-container">
+                                    <div className="response-item">
+                                      <div className="response-question">
+                                        {question.text}
+                                      </div>
+                                      <div className="response-actions">
+                                        {trackerData && trackerData.length > 0 && (
+                                          <button
+                                            className="log-button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              toggleLogExpansion(entry.id, question.id);
+                                            }}
+                                            title="Show tracker logs"
                                           >
-                                            {getResponseLabel(response.value, question.scaleType, question.scaleLabels)}
-                                            {question.scaleType !== 'binary' && (
-                                              <span className="response-numeric">
-                                                ({response.value > 0 ? '+' : ''}{response.value})
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                              <polyline points="14 2 14 8 20 8"></polyline>
+                                            </svg>
+                                            {isLogExpanded ? 'Hide' : 'Logs'}
+                                          </button>
+                                        )}
+                                        {response && wasAvailable && onUpdateResponse && (
+                                          <button
+                                            className="edit-button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              startEditing(entry.id, question.id, response.value);
+                                            }}
+                                            title="Edit response"
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                                            </svg>
+                                            Edit
+                                          </button>
+                                        )}
+                                      </div>
+                                      <div className="response-value">
+                                        {isEditing ? (
+                                          <div className="edit-controls">
+                                            <select
+                                              value={tempEditValue}
+                                              onChange={(e) => setTempEditValue(Number(e.target.value))}
+                                              className="edit-select"
+                                            >
+                                              {getScaleOptions(question.scaleType, question.scaleLabels).map(option => (
+                                                <option key={option.value} value={option.value}>
+                                                  {option.label}
+                                                </option>
+                                              ))}
+                                            </select>
+                                            <div className="edit-buttons">
+                                              <button
+                                                className="save-edit"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  saveEdit();
+                                                }}
+                                              >
+                                                Save
+                                              </button>
+                                              <button
+                                                className="cancel-edit"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  cancelEditing();
+                                                }}
+                                              >
+                                                Cancel
+                                              </button>
+                                            </div>
+                                          </div>
+                                        ) : response && wasAvailable ? (
+                                          <>
+                                            <span
+                                              style={{ color: getResponseColor(response.value, question.scaleType) }}
+                                            >
+                                              {getResponseLabel(response.value, question.scaleType, question.scaleLabels)}
+                                              {question.scaleType !== 'binary' && (
+                                                <span className="response-numeric">
+                                                  ({response.value > 0 ? '+' : ''}{response.value})
+                                                </span>
+                                              )}
+                                            </span>
+                                            {response.lastModified && (
+                                              <span className="edited-indicator" title={`Last edited: ${new Date(response.lastModified).toLocaleString()}`}>
+                                                (edited)
                                               </span>
                                             )}
+                                          </>
+                                        ) : !wasAvailable ? (
+                                          <span className="response-absent">
+                                            Absent in that day's questionnaire version
                                           </span>
-                                        </>
-                                      ) : !wasAvailable ? (
-                                        <span className="response-absent">
-                                          Absent in that day's questionnaire version
-                                        </span>
-                                      ) : (
-                                        <span className="response-missing">
-                                          No response
-                                        </span>
-                                      )}
+                                        ) : (
+                                          <span className="response-missing">
+                                            No response
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
+
+                                    {isLogExpanded && trackerData && (
+                                      <div className="inline-logs">
+                                        <h5>Tracker Activity (contextual time window)</h5>
+                                        <div className="log-entries">
+                                          {trackerData.map(buttonData => {
+                                            const unpairedClicks = removePairedClicks(buttonData.clicks);
+                                            return unpairedClicks.length > 0 ? (
+                                              <div key={buttonData.buttonId} className="log-button-section">
+                                                <h6>{buttonData.buttonName}</h6>
+                                                <div className="log-clicks">
+                                                  {unpairedClicks.map((click, index) => (
+                                                    <div key={index} className="log-click">
+                                                      <span className="log-time">{formatLogDate(click.timestamp)}</span>
+                                                      <span className="log-action">+1</span>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            ) : null;
+                                          })}
+                                          {trackerData.every(bd => removePairedClicks(bd.clicks).length === 0) && (
+                                            <p className="no-logs">No tracker activity in this timeframe</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               })}

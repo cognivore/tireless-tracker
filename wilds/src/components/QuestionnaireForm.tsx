@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { AppState, QuestionResponse, QuestionData } from '../types';
 import * as storageService from '../services/storageService';
-import { getScaleLabelsForType } from '../utils/questionnaireUtils';
+import { getScaleLabelsForType, calculateTrackerTimeWindow } from '../utils/questionnaireUtils';
 import { removePairedClicks } from '../utils/mergeUtils';
 import '../styles/QuestionnaireForm.css';
 
@@ -22,7 +22,7 @@ export default function QuestionnaireForm({
   const [responses, setResponses] = useState<Map<string, number>>(new Map());
   const [notes, setNotes] = useState('');
   const [showTrackerData, setShowTrackerData] = useState<string | null>(null);
-  const [trackerTimeRange, setTrackerTimeRange] = useState<'day' | 'week' | 'month'>('day');
+  const [trackerTimeRange, setTrackerTimeRange] = useState<'day' | 'week' | 'month' | 'smart'>('smart');
 
   useEffect(() => {
     // Initialize responses with neutral values
@@ -112,28 +112,48 @@ export default function QuestionnaireForm({
       return null;
     }
 
-    const now = Date.now();
-    let startTime: number;
+    // Create a mock filled questionnaire for time window calculation
+    const mockFilling = {
+      id: 'temp',
+      questionnaireId: questionnaire.id,
+      questionnaireName: questionnaire.name,
+      responses: [],
+      filledAt: Date.now(),
+      date: new Date().toISOString().split('T')[0]
+    };
 
-    switch (trackerTimeRange) {
-      case 'day':
-        startTime = now - (24 * 60 * 60 * 1000);
-        break;
-      case 'week':
-        startTime = now - (7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'month':
-        startTime = now - (30 * 24 * 60 * 60 * 1000);
-        break;
-      default:
-        startTime = now - (24 * 60 * 60 * 1000);
+    // Calculate optimal time window or fall back to user-selected range
+    let startTime: number;
+    let endTime: number;
+
+    if (trackerTimeRange === 'smart') {
+      const timeWindow = calculateTrackerTimeWindow(mockFilling, appState.filledQuestionnaires || []);
+      startTime = timeWindow.startTime;
+      endTime = timeWindow.endTime;
+    } else {
+      // Use user-selected time range
+      const now = Date.now();
+      switch (trackerTimeRange) {
+        case 'day':
+          startTime = now - (24 * 60 * 60 * 1000);
+          break;
+        case 'week':
+          startTime = now - (7 * 24 * 60 * 60 * 1000);
+          break;
+        case 'month':
+          startTime = now - (30 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          startTime = now - (24 * 60 * 60 * 1000);
+      }
+      endTime = now;
     }
 
     return storageService.getTrackerDataForTimeRange(
       appState,
       question.subscribedButtonIds,
       startTime,
-      now
+      endTime
     );
   };
 
@@ -203,6 +223,13 @@ export default function QuestionnaireForm({
                     <div className="tracker-data-header">
                       <h4>Related Tracker Data</h4>
                       <div className="time-range-selector">
+                        <button
+                          className={`time-range-button ${trackerTimeRange === 'smart' ? 'active' : ''}`}
+                          onClick={() => setTrackerTimeRange('smart')}
+                          title="Automatically calculates optimal time window based on questionnaire frequency"
+                        >
+                          Smart
+                        </button>
                         <button
                           className={`time-range-button ${trackerTimeRange === 'day' ? 'active' : ''}`}
                           onClick={() => setTrackerTimeRange('day')}
