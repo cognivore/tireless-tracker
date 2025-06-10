@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import type { AppState, FilledQuestionnaire, QuestionScaleType, QuestionResponse } from '../types';
+import type { AppState, FilledQuestionnaire, QuestionScaleType } from '../types';
 import { getResponseLabel, wasQuestionAvailableAtTime, getScaleLabelsForType, calculateTrackerTimeWindow } from '../utils/questionnaireUtils';
 import { removePairedClicks } from '../utils/mergeUtils';
 import * as storageService from '../services/storageService';
