@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { AppState, QuestionResponse, QuestionData } from '../types';
 import * as storageService from '../services/storageService';
 import { getScaleLabelsForType } from '../utils/questionnaireUtils';
+import { removePairedClicks } from '../utils/mergeUtils';
 import '../styles/QuestionnaireForm.css';
 
 interface QuestionnaireFormProps {
@@ -223,29 +224,31 @@ export default function QuestionnaireForm({
                       </div>
                     </div>
                     <div className="tracker-data-list">
-                      {trackerData.map(buttonData => (
-                        <div key={buttonData.buttonId} className="tracker-button-data">
-                          <div className="tracker-button-info">
-                            <span className="tracker-button-name">{buttonData.buttonName}</span>
-                            <span className="tracker-button-count">
-                              {buttonData.clicks.filter(c => !c.isDecrement).length} clicks
-                            </span>
-                          </div>
-                          {buttonData.clicks.length > 0 && (
-                            <div className="tracker-recent-clicks">
-                              <span className="recent-label">Recent:</span>
-                              {buttonData.clicks
-                                .filter(c => !c.isDecrement)
-                                .slice(-3)
-                                .map((click, index) => (
-                                  <span key={index} className="recent-click">
-                                    {formatDate(click.timestamp)}
-                                  </span>
-                                ))}
+                      {trackerData.map(buttonData => {
+                        const unpairedClicks = removePairedClicks(buttonData.clicks);
+                        return (
+                          <div key={buttonData.buttonId} className="tracker-button-data">
+                            <div className="tracker-button-info">
+                              <span className="tracker-button-name">{buttonData.buttonName}</span>
+                              <span className="tracker-button-count">
+                                {unpairedClicks.length} clicks
+                              </span>
                             </div>
-                          )}
-                        </div>
-                      ))}
+                            {unpairedClicks.length > 0 && (
+                              <div className="tracker-recent-clicks">
+                                <span className="recent-label">Recent:</span>
+                                {unpairedClicks
+                                  .slice(-3)
+                                  .map((click, index) => (
+                                    <span key={index} className="recent-click">
+                                      {formatDate(click.timestamp)}
+                                    </span>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

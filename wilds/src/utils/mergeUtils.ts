@@ -1,6 +1,42 @@
 import type { AppState, ButtonData, ClickRecord, EntityChange, Screen, QuestionnaireConfig, QuestionData, FilledQuestionnaire, NotificationData } from '../types';
 
 /**
+ * Removes paired increment/decrement clicks, leaving only net increments
+ * This ensures that decrements cancel out the most recent increments
+ */
+export function removePairedClicks(clicks: ClickRecord[]): ClickRecord[] {
+  // Sort clicks chronologically (oldest first)
+  const sortedClicks = [...clicks].sort((a, b) => a.timestamp - b.timestamp);
+
+  const result = [];
+  const pairedIndices = new Set<number>();
+
+  // Process decrements and pair them with most recent increments
+  for (let i = sortedClicks.length - 1; i >= 0; i--) {
+    if (sortedClicks[i].isDecrement && !pairedIndices.has(i)) {
+      // Find the most recent unpaired increment before this decrement
+      for (let j = i - 1; j >= 0; j--) {
+        if (!sortedClicks[j].isDecrement && !pairedIndices.has(j)) {
+          // Pair this increment with the decrement
+          pairedIndices.add(i); // Mark decrement as paired
+          pairedIndices.add(j); // Mark increment as paired
+          break;
+        }
+      }
+    }
+  }
+
+  // Only include unpaired increments in the result
+  for (let i = 0; i < sortedClicks.length; i++) {
+    if (!pairedIndices.has(i) && !sortedClicks[i].isDecrement) {
+      result.push(sortedClicks[i]);
+    }
+  }
+
+  return result;
+}
+
+/**
  * Merges clicks from two arrays, avoiding duplicates based on timestamp
  * This implements a PN-Counter CRDT operation
  */
@@ -48,11 +84,10 @@ function processChangeLogs(
         const existingButton = allButtons.get(button.id)!;
         const mergedClicks = mergeClicks(existingButton.clicks, button.clicks);
 
-        // Update clicks and recalculate count
+        // Update clicks and recalculate count using pairing logic
         existingButton.clicks = mergedClicks;
-        const incrementCount = mergedClicks.filter(click => !click.isDecrement).length;
-        const decrementCount = mergedClicks.filter(click => click.isDecrement).length;
-        existingButton.count = Math.max(0, incrementCount - decrementCount);
+        const unpairedClicks = removePairedClicks(mergedClicks);
+        existingButton.count = unpairedClicks.length;
       }
     });
   });
@@ -160,10 +195,9 @@ function mergeButtons(buttons1: ButtonData[], buttons2: ButtonData[]): ButtonDat
       // Step 1: Merge clicks (PN-Counter CRDT)
       const mergedClicks = mergeClicks(existingButton.clicks, button.clicks);
 
-      // Recalculate count from merged clicks
-      const incrementCount = mergedClicks.filter(click => !click.isDecrement).length;
-      const decrementCount = mergedClicks.filter(click => click.isDecrement).length;
-      const count = Math.max(0, incrementCount - decrementCount);
+      // Recalculate count from merged clicks using pairing logic
+      const unpairedClicks = removePairedClicks(mergedClicks);
+      const count = unpairedClicks.length;
 
       // Step 2: For metadata, use LWW semantics
       const newerButton =

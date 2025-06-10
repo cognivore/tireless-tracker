@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { AppState } from '../types';
+import { removePairedClicks } from '../utils/mergeUtils';
 import '../styles/ActivityJournal.css';
 
 interface ActivityJournalProps {
@@ -17,7 +18,6 @@ interface JournalEntry {
 
 export default function ActivityJournal({ appState, onClose }: ActivityJournalProps) {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [filter, setFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<{ start: string | null; end: string | null }>({
     start: null,
     end: null
@@ -30,17 +30,17 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
     appState.screens.forEach(screen => {
       screen.buttons.forEach(button => {
         if (button.clicks && button.clicks.length > 0) {
-          // For each click, create a journal entry
-          button.clicks.forEach((click) => {
-            // Determine if this was an increment or decrement based on the isDecrement property
-            const action = click.isDecrement ? 'decrement' : 'increment';
+          // Process clicks for this button to remove paired increment/decrement pairs
+          const processedClicks = removePairedClicks(button.clicks);
 
+          // Create journal entries only for unpaired clicks
+          processedClicks.forEach((click) => {
             journalEntries.push({
               timestamp: click.timestamp,
               date: click.date,
               screenName: screen.name,
               buttonName: button.text,
-              action
+              action: 'increment' // Only increments remain after pairing
             });
           });
         }
@@ -52,21 +52,13 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
     setEntries(journalEntries);
   }, [appState]);
 
-  // Filter entries based on selected filter and date range
+  // Filter entries based on date range (no need for action filter since only increments remain)
   const filteredEntries = entries.filter(entry => {
     // Filter by date range if set
     if (dateRange.start && new Date(entry.date) < new Date(dateRange.start)) {
       return false;
     }
     if (dateRange.end && new Date(entry.date) > new Date(dateRange.end)) {
-      return false;
-    }
-
-    // Filter by action type
-    if (filter === 'increments' && entry.action !== 'increment') {
-      return false;
-    }
-    if (filter === 'decrements' && entry.action !== 'decrement') {
       return false;
     }
 
@@ -106,20 +98,6 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
         </header>
 
         <div className="journal-filters">
-          <div className="journal-filter-group">
-            <label htmlFor="action-filter">Filter by action:</label>
-            <select
-              id="action-filter"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="journal-filter-select"
-            >
-              <option value="all">All Actions</option>
-              <option value="increments">Increments Only</option>
-              <option value="decrements">Decrements Only</option>
-            </select>
-          </div>
-
           <div className="journal-filter-group">
             <label htmlFor="date-start">Start date:</label>
             <select
@@ -162,11 +140,7 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
                   </div>
                   <div className="journal-entry-body">
                     <div className="journal-entry-action">
-                      {entry.action === 'increment' ? (
-                        <span className="journal-action-increment">+1</span>
-                      ) : (
-                        <span className="journal-action-decrement">-1</span>
-                      )}
+                      <span className="journal-action-increment">+1</span>
                     </div>
                     <div className="journal-entry-details">
                       <span className="journal-entry-button">{entry.buttonName}</span>
