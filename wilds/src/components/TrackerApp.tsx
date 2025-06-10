@@ -8,27 +8,32 @@ import EditButtonName from './EditButtonName';
 import ArchiveManager from './ArchiveManager';
 import ActivityJournal from './ActivityJournal';
 import RenameTracker from './RenameTracker';
+import QuestionnaireManager from './QuestionnaireManager';
+import QuestionnaireEditor from './QuestionnaireEditor';
+import QuestionnaireForm from './QuestionnaireForm';
+import QuestionnaireHistory from './QuestionnaireHistory';
+import NotificationSystem from './NotificationSystem';
 import { DragDropContext } from '@hello-pangea/dnd';
 import type { DropResult, DragStart } from '@hello-pangea/dnd';
 import * as storageService from '../services/storageService';
 import { compressState } from '../utils/compressionUtils';
-import type { AppState } from '../types';
+import type { AppState, QuestionnaireConfig, QuestionData, QuestionScaleType, QuestionResponse } from '../types';
 import '../styles/TrackerApp.css';
 
 // Create a ShareDialog component with proper overlay styling
 const ShareDialog = ({ shareUrl, onClose }: { shareUrl: string, onClose: () => void }) => {
   const [copied, setCopied] = useState(false);
-  
+
   const handleCopy = () => {
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
-    
+
     // Reset after 1.5 seconds
     setTimeout(() => {
       setCopied(false);
     }, 1500);
   };
-  
+
   return (
     <>
       <div className="screen-selector-overlay" onClick={onClose}></div>
@@ -39,13 +44,13 @@ const ShareDialog = ({ shareUrl, onClose }: { shareUrl: string, onClose: () => v
         <div className="share-dialog-content">
           <p className="share-dialog-description">Copy this code to share your tracker with others. You can paste it in the "Import Tracker" option on the home screen.</p>
           <div className="share-url-container">
-            <textarea 
-              value={shareUrl} 
-              readOnly 
+            <textarea
+              value={shareUrl}
+              readOnly
               className="share-data-input"
-              onClick={(e) => (e.target as HTMLTextAreaElement).select()} 
+              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
             />
-            <button 
+            <button
               className={`copy-button ${copied ? 'copied' : ''}`}
               onClick={handleCopy}
             >
@@ -81,7 +86,13 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string, visible: boolean }>({ message: '', visible: false });
-  
+
+  // Questionnaire state
+  const [showQuestionnaireManager, setShowQuestionnaireManager] = useState(false);
+  const [editingQuestionnaireId, setEditingQuestionnaireId] = useState<string | null>(null);
+  const [fillingQuestionnaireId, setFillingQuestionnaireId] = useState<string | null>(null);
+  const [viewingQuestionnaireHistoryId, setViewingQuestionnaireHistoryId] = useState<string | null>(null);
+
   // Drag and drop state
   const [isDragging, setIsDragging] = useState(false);
   const [draggingButtonId, setDraggingButtonId] = useState<string | null>(null);
@@ -122,7 +133,7 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
     } else {
       document.body.classList.remove('dragging-active');
     }
-    
+
     return () => {
       document.body.classList.remove('dragging-active');
     };
@@ -166,56 +177,56 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
     setAppState({ ...newState, currentScreenId: newState.screens[newState.screens.length - 1].id });
     setShowAddScreen(false);
   };
-  
+
   const handleEditScreenClick = (screenId: string) => {
     setEditingScreenId(screenId);
   };
-  
+
   const handleRenameScreen = (screenId: string, newName: string) => {
     const newState = storageService.renameScreen(appState, screenId, newName);
     setAppState(newState);
     setEditingScreenId(null);
   };
-  
+
   const handleDeleteScreenClick = (screenId: string) => {
     if (confirm('Are you sure you want to archive this screen?')) {
       const newState = storageService.archiveScreen(appState, screenId);
       setAppState(newState);
     }
   };
-  
+
   const handleEditButtonClick = (buttonId: string) => {
     setEditingButtonId(buttonId);
   };
-  
+
   const handleRenameButton = (buttonId: string, newName: string) => {
     const newState = storageService.renameButton(appState, appState.currentScreenId, buttonId, newName);
     setAppState(newState);
     setEditingButtonId(null);
   };
-  
+
   const handleDeleteButton = (buttonId: string) => {
     if (confirm('Are you sure you want to archive this button?')) {
       const newState = storageService.archiveButton(appState, appState.currentScreenId, buttonId);
       setAppState(newState);
     }
   };
-  
+
   const handleUnarchiveScreen = (screenId: string) => {
     const newState = storageService.unarchiveScreen(appState, screenId);
     setAppState(newState);
   };
-  
+
   const handleUnarchiveButton = (screenId: string, buttonId: string) => {
     const newState = storageService.unarchiveButton(appState, screenId, buttonId);
     setAppState(newState);
   };
-  
+
   const handleDeleteScreenPermanently = (screenId: string) => {
     const newState = storageService.deleteScreenPermanently(appState, screenId);
     setAppState(newState);
   };
-  
+
   const handleDeleteButtonPermanently = (screenId: string, buttonId: string) => {
     const newState = storageService.deleteButtonPermanently(appState, screenId, buttonId);
     setAppState(newState);
@@ -223,18 +234,18 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
 
   const getShareableData = (): string => {
     if (!appState) return '';
-    
+
     // Compress the state to a string
     return compressState(appState);
   };
-  
+
   const handleShare = () => {
     setShowShareDialog(true);
   };
-  
-  const handleRenameTracker = (newName: string) => {
+
+    const handleRenameTracker = (newName: string) => {
     if (!appState) return;
-    
+
     const updatedState = storageService.renameTracker(appState.trackerId, newName);
     if (updatedState) {
       setAppState(updatedState);
@@ -242,10 +253,121 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
     setShowRenameDialog(false);
   };
 
+  // Questionnaire handlers
+  const handleCreateQuestionnaire = (name: string, description?: string) => {
+    if (!appState) return;
+    const newState = storageService.createQuestionnaire(appState, name, description);
+    setAppState(newState);
+  };
+
+  const handleUpdateQuestionnaire = (questionnaireId: string, updates: Partial<QuestionnaireConfig>) => {
+    if (!appState) return;
+    const newState = storageService.updateQuestionnaire(appState, questionnaireId, updates);
+    setAppState(newState);
+  };
+
+  const handleArchiveQuestionnaire = (questionnaireId: string) => {
+    if (!appState) return;
+    const newState = storageService.archiveQuestionnaire(appState, questionnaireId);
+    setAppState(newState);
+  };
+
+  const handleToggleQuestionnaireActive = (questionnaireId: string, isActive: boolean) => {
+    if (!appState) return;
+    const newState = storageService.updateQuestionnaire(appState, questionnaireId, { isActive });
+    setAppState(newState);
+
+    // Schedule notifications if activating
+    if (isActive) {
+      const updatedState = storageService.scheduleNotifications(newState, questionnaireId);
+      setAppState(updatedState);
+    }
+  };
+
+  const handleAddQuestion = (questionnaireId: string, text: string, scaleType: QuestionScaleType, subscribedButtonIds: string[]) => {
+    if (!appState) return;
+    const newState = storageService.addQuestion(appState, questionnaireId, text, scaleType, subscribedButtonIds);
+    setAppState(newState);
+  };
+
+  const handleUpdateQuestion = (questionnaireId: string, questionId: string, updates: Partial<QuestionData>) => {
+    if (!appState) return;
+    const newState = storageService.updateQuestion(appState, questionnaireId, questionId, updates);
+    setAppState(newState);
+  };
+
+  const handleReorderQuestions = (questionnaireId: string, sourceIndex: number, destinationIndex: number) => {
+    if (!appState) return;
+    const newState = storageService.reorderQuestions(appState, questionnaireId, sourceIndex, destinationIndex);
+    setAppState(newState);
+  };
+
+  const handleArchiveQuestion = (questionnaireId: string, questionId: string) => {
+    if (!appState) return;
+    const newState = storageService.archiveQuestion(appState, questionnaireId, questionId);
+    setAppState(newState);
+  };
+
+  const handleScheduleNotifications = (questionnaireId: string) => {
+    if (!appState) return;
+    const newState = storageService.scheduleNotifications(appState, questionnaireId);
+    setAppState(newState);
+  };
+
+  const handleSubmitQuestionnaire = (questionnaireId: string, responses: QuestionResponse[], notes?: string) => {
+    if (!appState) return;
+    const newState = storageService.submitQuestionnaire(appState, questionnaireId, responses, notes);
+    setAppState(newState);
+
+    // Show success toast
+    setToast({
+      message: 'Questionnaire submitted successfully!',
+      visible: true
+    });
+
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, visible: false }));
+    }, 3000);
+  };
+
+  const handleDismissNotification = (notificationId: string) => {
+    if (!appState) return;
+    const newState = storageService.dismissNotification(appState, notificationId);
+    setAppState(newState);
+  };
+
+  const handleFillQuestionnaire = (questionnaireId: string) => {
+    setFillingQuestionnaireId(questionnaireId);
+    setShowQuestionnaireManager(false);
+    setEditingQuestionnaireId(null);
+    setViewingQuestionnaireHistoryId(null);
+  };
+
+  const handleEditQuestionnaire = (questionnaireId: string) => {
+    setEditingQuestionnaireId(questionnaireId);
+    setShowQuestionnaireManager(false);
+    setFillingQuestionnaireId(null);
+    setViewingQuestionnaireHistoryId(null);
+  };
+
+  const handleViewQuestionnaireHistory = (questionnaireId: string) => {
+    setViewingQuestionnaireHistoryId(questionnaireId);
+    setShowQuestionnaireManager(false);
+    setEditingQuestionnaireId(null);
+    setFillingQuestionnaireId(null);
+  };
+
+  const handleCloseQuestionnaireModals = () => {
+    setShowQuestionnaireManager(false);
+    setEditingQuestionnaireId(null);
+    setFillingQuestionnaireId(null);
+    setViewingQuestionnaireHistoryId(null);
+  };
+
   const currentScreen = appState.screens.find(s => s.id === appState.currentScreenId);
   const editingScreen = editingScreenId ? appState.screens.find(s => s.id === editingScreenId) : null;
   const hasArchivedItems = storageService.hasArchivedItems(appState);
-  
+
   let editingButton = null;
   if (editingButtonId && currentScreen) {
     editingButton = currentScreen.buttons.find(b => b.id === editingButtonId);
@@ -253,7 +375,7 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
 
   const handleDragStart = (start: DragStart) => {
     console.log('Drag start:', start);
-    
+
     // Set dragging state for visual indicators
     if (start.type === 'BUTTON') {
       setIsDragging(true);
@@ -262,18 +384,18 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
 
   const handleDragEnd = (result: DropResult) => {
     const { source, destination, type } = result;
-    
+
     // Clear dragging state
     setIsDragging(false);
     setDraggingButtonId(null);
     setDraggingSourceScreenId(null);
     setScreenSelectorVisible(false);
-    
+
     // Dropped outside the list
     if (!destination) {
       return;
     }
-    
+
     // Dropped in the same position
     if (
       source.droppableId === destination.droppableId &&
@@ -305,7 +427,7 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
         const sourceScreen = appState.screens.find(s => s.id === source.droppableId);
         const destScreen = appState.screens.find(s => s.id === destination.droppableId);
         const button = sourceScreen?.buttons.find((_, idx) => idx === source.index);
-        
+
         const newState = storageService.moveButtonToScreen(
           appState,
           source.droppableId,
@@ -313,18 +435,18 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
           source.index,
           destination.index
         );
-        
+
         // Switch to the destination screen
         newState.currentScreenId = destination.droppableId;
         setAppState(newState);
-        
+
         // Show toast notification
         if (button && sourceScreen && destScreen) {
           setToast({
             message: `Moved "${button.text}" from "${sourceScreen.name}" to "${destScreen.name}"`,
             visible: true
           });
-          
+
           // Hide toast after 3 seconds
           setTimeout(() => {
             setToast(prev => ({ ...prev, visible: false }));
@@ -363,6 +485,21 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
             </svg>
           </div>
           <div className="header-actions">
+            <NotificationSystem
+              appState={appState}
+              onFillQuestionnaire={handleFillQuestionnaire}
+              onDismissNotification={handleDismissNotification}
+            />
+            <button className="questionnaire-button" onClick={() => setShowQuestionnaireManager(true)} title="Questionnaires">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 11H7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-2"></path>
+                <rect x="9" y="7" width="6" height="6" rx="1"></rect>
+                <path d="M12 1v6"></path>
+                <path d="M12 15v2"></path>
+                <path d="M16 15v2"></path>
+                <path d="M8 15v2"></path>
+              </svg>
+            </button>
             <button className="share-button" onClick={handleShare}>
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="18" cy="5" r="3"></circle>
@@ -383,8 +520,8 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
             </button>
           </div>
         </header>
-        
-        <Navigation 
+
+        <Navigation
           screens={appState.screens}
           currentScreenId={appState.currentScreenId}
           onScreenChange={handleScreenChange}
@@ -394,10 +531,10 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
           onArchiveClick={() => setShowArchive(true)}
           hasArchivedItems={hasArchivedItems}
         />
-        
+
         <main className="tracker-content">
           {/* Only render the current screen */}
-          <Screen 
+          <Screen
             screen={currentScreen}
             screens={appState.screens}
             onButtonClick={handleButtonClick}
@@ -406,7 +543,7 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
             onButtonDelete={handleDeleteButton}
             onMoveToScreen={handleMoveToScreen}
           />
-          
+
           <div className="add-button-container">
             <AddButton onAdd={handleAddButton} />
           </div>
@@ -414,12 +551,12 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
       </DragDropContext>
 
       {showAddScreen && (
-        <AddScreen 
-          onAdd={handleAddScreen} 
-          onCancel={() => setShowAddScreen(false)} 
+        <AddScreen
+          onAdd={handleAddScreen}
+          onCancel={() => setShowAddScreen(false)}
         />
       )}
-      
+
       {editingScreen && (
         <EditScreenName
           screenId={editingScreen.id}
@@ -428,7 +565,7 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
           onCancel={() => setEditingScreenId(null)}
         />
       )}
-      
+
       {editingButton && (
         <EditButtonName
           buttonId={editingButton.id}
@@ -437,7 +574,7 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
           onCancel={() => setEditingButtonId(null)}
         />
       )}
-      
+
       {showArchive && (
         <ArchiveManager
           appState={appState}
@@ -448,21 +585,21 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
           onClose={() => setShowArchive(false)}
         />
       )}
-      
+
       {showJournal && (
         <ActivityJournal
           appState={appState}
           onClose={() => setShowJournal(false)}
         />
       )}
-      
+
       {showShareDialog && (
         <ShareDialog
           shareUrl={getShareableData()}
           onClose={() => setShowShareDialog(false)}
         />
       )}
-      
+
       {showRenameDialog && (
         <RenameTracker
           currentName={appState.trackerName}
@@ -470,12 +607,57 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
           onCancel={() => setShowRenameDialog(false)}
         />
       )}
-      
+
+      {/* Questionnaire Components */}
+      {showQuestionnaireManager && (
+        <QuestionnaireManager
+          appState={appState}
+          onCreateQuestionnaire={handleCreateQuestionnaire}
+          onEditQuestionnaire={handleEditQuestionnaire}
+          onFillQuestionnaire={handleFillQuestionnaire}
+          onViewHistory={handleViewQuestionnaireHistory}
+          onToggleActive={handleToggleQuestionnaireActive}
+          onArchiveQuestionnaire={handleArchiveQuestionnaire}
+          onClose={handleCloseQuestionnaireModals}
+        />
+      )}
+
+      {editingQuestionnaireId && (
+        <QuestionnaireEditor
+          appState={appState}
+          questionnaireId={editingQuestionnaireId}
+          onUpdateQuestionnaire={handleUpdateQuestionnaire}
+          onAddQuestion={handleAddQuestion}
+          onUpdateQuestion={handleUpdateQuestion}
+          onReorderQuestions={handleReorderQuestions}
+          onArchiveQuestion={handleArchiveQuestion}
+          onScheduleNotifications={handleScheduleNotifications}
+          onClose={handleCloseQuestionnaireModals}
+        />
+      )}
+
+      {fillingQuestionnaireId && (
+        <QuestionnaireForm
+          appState={appState}
+          questionnaireId={fillingQuestionnaireId}
+          onSubmitQuestionnaire={handleSubmitQuestionnaire}
+          onClose={handleCloseQuestionnaireModals}
+        />
+      )}
+
+      {viewingQuestionnaireHistoryId && (
+        <QuestionnaireHistory
+          appState={appState}
+          questionnaireId={viewingQuestionnaireHistoryId}
+          onClose={handleCloseQuestionnaireModals}
+        />
+      )}
+
       {/* Toast notification */}
       <div className={`toast-notification ${toast.visible ? 'visible' : ''}`}>
         {toast.message}
       </div>
-      
+
       {/* Screen selector for moving buttons between screens */}
       {screenSelectorVisible && (
         <>
@@ -509,13 +691,13 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
                             // Switch to the destination screen
                             newState.currentScreenId = screen.id;
                             setAppState(newState);
-                            
+
                             // Show toast notification
                             setToast({
                               message: `Moved "${draggingButtonText}" to "${screen.name}"`,
                               visible: true
                             });
-                            
+
                             // Hide toast after 3 seconds
                             setTimeout(() => {
                               setToast(prev => ({ ...prev, visible: false }));
@@ -534,8 +716,8 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
                   </button>
                 ))}
             </div>
-            <button 
-              className="screen-selector-cancel" 
+            <button
+              className="screen-selector-cancel"
               onClick={() => {
                 setScreenSelectorVisible(false);
               }}
@@ -547,4 +729,4 @@ export default function TrackerApp({ trackerId, onBack }: TrackerAppProps) {
       )}
     </div>
   );
-} 
+}

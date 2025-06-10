@@ -105,11 +105,11 @@
   .tracker-header {
     padding: var(--spacing-lg);
   }
-  
+
   .tracker-title {
     font-size: 1.75rem;
   }
-  
+
   .tracker-content {
     padding: var(--spacing-lg);
   }
@@ -120,22 +120,34 @@
   gap: 10px;
 }
 
-.share-button, .journal-button {
+.share-button, .journal-button, .questionnaire-button {
   background: none;
   border: none;
   cursor: pointer;
   color: white;
   width: 40px;
   height: 40px;
-  border-radius: 20px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
-.share-button:hover, .journal-button:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+.share-button:hover, .journal-button:hover, .questionnaire-button:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.questionnaire-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.questionnaire-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .tracker-title-container {
@@ -424,4 +436,4 @@ body.dragging-active::after {
   0% { transform: scale(1); }
   50% { transform: scale(1.1); }
   100% { transform: scale(1); }
-} 
+}
