@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { AppState, FilledQuestionnaire, QuestionScaleType } from '../types';
-import { getResponseLabel } from '../utils/questionnaireUtils';
+import { getResponseLabel, wasQuestionAvailableAtTime } from '../utils/questionnaireUtils';
 import '../styles/QuestionnaireHistory.css';
 
 interface QuestionnaireHistoryProps {
@@ -188,7 +188,8 @@ export default function QuestionnaireHistory({
                           <span className="history-entry-time">
                             {new Date(entry.filledAt).toLocaleTimeString(undefined, {
                               hour: '2-digit',
-                              minute: '2-digit'
+                              minute: '2-digit',
+                              hour12: false
                             })}
                           </span>
                         </div>
@@ -212,29 +213,44 @@ export default function QuestionnaireHistory({
                       {selectedEntry === entry.id && selectedQuestionnaireConfig && (
                         <div className="history-entry-details">
                           <div className="responses-list">
-                            {entry.responses.map(response => {
-                              const question = selectedQuestionnaireConfig.questions.find(q => q.id === response.questionId);
-                              if (!question) return null;
+                            {selectedQuestionnaireConfig.questions
+                              .filter(q => !q.archived)
+                              .map(question => {
+                                const response = entry.responses.find(r => r.questionId === question.id);
+                                const wasAvailable = wasQuestionAvailableAtTime(question, entry.filledAt);
 
-                              return (
-                                <div key={response.questionId} className="response-item">
-                                  <div className="response-question">
-                                    {question.text}
+                                return (
+                                  <div key={question.id} className="response-item">
+                                    <div className="response-question">
+                                      {question.text}
+                                    </div>
+                                    <div className="response-value">
+                                      {response && wasAvailable ? (
+                                        <>
+                                          <span
+                                            style={{ color: getResponseColor(response.value, question.scaleType) }}
+                                          >
+                                            {getResponseLabel(response.value, question.scaleType, question.scaleLabels)}
+                                            {question.scaleType !== 'binary' && (
+                                              <span className="response-numeric">
+                                                ({response.value > 0 ? '+' : ''}{response.value})
+                                              </span>
+                                            )}
+                                          </span>
+                                        </>
+                                      ) : !wasAvailable ? (
+                                        <span className="response-absent">
+                                          Absent in that day's questionnaire version
+                                        </span>
+                                      ) : (
+                                        <span className="response-missing">
+                                          No response
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div
-                                    className="response-value"
-                                    style={{ color: getResponseColor(response.value, question.scaleType) }}
-                                  >
-                                    {getResponseLabel(response.value, question.scaleType, question.scaleLabels)}
-                                    {question.scaleType !== 'binary' && (
-                                      <span className="response-numeric">
-                                        ({response.value > 0 ? '+' : ''}{response.value})
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
                           </div>
 
                           {entry.notes && (

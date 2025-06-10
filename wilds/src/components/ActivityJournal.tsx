@@ -25,7 +25,7 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
 
   useEffect(() => {
     const journalEntries: JournalEntry[] = [];
-    
+
     // Process all screens and buttons to extract click records
     appState.screens.forEach(screen => {
       screen.buttons.forEach(button => {
@@ -34,7 +34,7 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
           button.clicks.forEach((click) => {
             // Determine if this was an increment or decrement based on the isDecrement property
             const action = click.isDecrement ? 'decrement' : 'increment';
-            
+
             journalEntries.push({
               timestamp: click.timestamp,
               date: click.date,
@@ -46,7 +46,7 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
         }
       });
     });
-    
+
     // Sort by timestamp, newest first
     journalEntries.sort((a, b) => b.timestamp - a.timestamp);
     setEntries(journalEntries);
@@ -61,7 +61,7 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
     if (dateRange.end && new Date(entry.date) > new Date(dateRange.end)) {
       return false;
     }
-    
+
     // Filter by action type
     if (filter === 'increments' && entry.action !== 'increment') {
       return false;
@@ -69,7 +69,7 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
     if (filter === 'decrements' && entry.action !== 'decrement') {
       return false;
     }
-    
+
     return true;
   });
 
@@ -78,11 +78,11 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
 
   // Format date for display
   const formatDate = (dateStr: string) => {
-    const options: Intl.DateTimeFormatOptions = { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     };
     return new Date(dateStr).toLocaleDateString(undefined, options);
   };
@@ -90,7 +90,11 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
   // Format time for display
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString();
+    return date.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
   };
 
   return (
@@ -100,13 +104,13 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
           <h2>Activity Journal</h2>
           <button className="journal-close-button" onClick={onClose}>×</button>
         </header>
-        
+
         <div className="journal-filters">
           <div className="journal-filter-group">
             <label htmlFor="action-filter">Filter by action:</label>
-            <select 
-              id="action-filter" 
-              value={filter} 
+            <select
+              id="action-filter"
+              value={filter}
               onChange={(e) => setFilter(e.target.value)}
               className="journal-filter-select"
             >
@@ -115,12 +119,12 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
               <option value="decrements">Decrements Only</option>
             </select>
           </div>
-          
+
           <div className="journal-filter-group">
             <label htmlFor="date-start">Start date:</label>
-            <select 
-              id="date-start" 
-              value={dateRange.start || ''} 
+            <select
+              id="date-start"
+              value={dateRange.start || ''}
               onChange={(e) => setDateRange({ ...dateRange, start: e.target.value || null })}
               className="journal-filter-select"
             >
@@ -130,12 +134,12 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
               ))}
             </select>
           </div>
-          
+
           <div className="journal-filter-group">
             <label htmlFor="date-end">End date:</label>
-            <select 
-              id="date-end" 
-              value={dateRange.end || ''} 
+            <select
+              id="date-end"
+              value={dateRange.end || ''}
               onChange={(e) => setDateRange({ ...dateRange, end: e.target.value || null })}
               className="journal-filter-select"
             >
@@ -146,7 +150,7 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
             </select>
           </div>
         </div>
-        
+
         <div className="journal-content">
           {filteredEntries.length > 0 ? (
             <ul className="journal-entries">
@@ -181,4 +185,4 @@ export default function ActivityJournal({ appState, onClose }: ActivityJournalPr
       </div>
     </div>
   );
-} 
+}

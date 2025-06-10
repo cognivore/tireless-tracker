@@ -251,6 +251,18 @@
   opacity: 0.7;
 }
 
+.response-absent {
+  color: #f97316;
+  font-style: italic;
+  font-size: 0.875rem;
+}
+
+.response-missing {
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 0.875rem;
+}
+
 .entry-notes {
   background: white;
   border: 1px solid #e5e7eb;

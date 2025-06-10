@@ -87,6 +87,9 @@ export default function QuestionnaireEditor({
     if (questionnaire.isActive) {
       onScheduleNotifications(questionnaireId);
     }
+
+    // Close the editor after saving
+    onClose();
   };
 
   const handleAddQuestion = () => {

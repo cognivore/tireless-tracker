@@ -1,4 +1,4 @@
-import type { AppState, ButtonData, ClickRecord, EntityChange, Screen } from '../types';
+import type { AppState, ButtonData, ClickRecord, EntityChange, Screen, QuestionnaireConfig, QuestionData, FilledQuestionnaire, NotificationData } from '../types';
 
 /**
  * Merges clicks from two arrays, avoiding duplicates based on timestamp
@@ -247,6 +247,195 @@ function mergeScreens(screens1: Screen[], screens2: Screen[]): Screen[] {
 }
 
 /**
+ * Merges questions from two arrays, combining their metadata
+ * Implements LWW-CRDT for question metadata
+ */
+function mergeQuestions(questions1: QuestionData[], questions2: QuestionData[]): QuestionData[] {
+  const questionMap = new Map<string, QuestionData>();
+
+  // Process first array of questions
+  questions1.forEach(question => {
+    questionMap.set(question.id, { ...question });
+  });
+
+  // Process second array of questions, merging with existing ones or adding new ones
+  questions2.forEach(question => {
+    if (questionMap.has(question.id)) {
+      // Question exists in both states, use LWW semantics
+      const existingQuestion = questionMap.get(question.id)!;
+
+      const newerQuestion =
+        (question.lastModified || 0) > (existingQuestion.lastModified || 0)
+          ? question
+          : existingQuestion;
+
+      questionMap.set(question.id, {
+        ...newerQuestion,
+        // Track highest entity version
+        entityVersion: Math.max(
+          (existingQuestion.entityVersion || 1),
+          (question.entityVersion || 1)
+        ),
+        lastModified: Math.max(
+          (existingQuestion.lastModified || 0),
+          (question.lastModified || 0)
+        )
+      });
+    } else {
+      // New question, add it
+      questionMap.set(question.id, { ...question });
+    }
+  });
+
+  return Array.from(questionMap.values());
+}
+
+/**
+ * Merges questionnaires from two arrays using CRDT approach
+ */
+function mergeQuestionnaires(questionnaires1: QuestionnaireConfig[], questionnaires2: QuestionnaireConfig[]): QuestionnaireConfig[] {
+  const questionnaireMap = new Map<string, QuestionnaireConfig>();
+
+  // Process first array of questionnaires
+  questionnaires1.forEach(questionnaire => {
+    questionnaireMap.set(questionnaire.id, { ...questionnaire });
+  });
+
+  // Process second array of questionnaires, merging with existing ones or adding new ones
+  questionnaires2.forEach(questionnaire => {
+    if (questionnaireMap.has(questionnaire.id)) {
+      // Questionnaire exists in both states, merge
+      const existingQuestionnaire = questionnaireMap.get(questionnaire.id)!;
+
+      // Merge questions
+      const mergedQuestions = mergeQuestions(existingQuestionnaire.questions, questionnaire.questions);
+
+      // Use LWW semantics for metadata
+      const newerQuestionnaire =
+        (questionnaire.lastModified || 0) > (existingQuestionnaire.lastModified || 0)
+          ? questionnaire
+          : existingQuestionnaire;
+
+      questionnaireMap.set(questionnaire.id, {
+        ...newerQuestionnaire,
+        questions: mergedQuestions,
+        // Track highest entity version
+        entityVersion: Math.max(
+          (existingQuestionnaire.entityVersion || 1),
+          (questionnaire.entityVersion || 1)
+        ),
+        lastModified: Math.max(
+          (existingQuestionnaire.lastModified || 0),
+          (questionnaire.lastModified || 0)
+        )
+      });
+    } else {
+      // New questionnaire, add it
+      questionnaireMap.set(questionnaire.id, { ...questionnaire });
+    }
+  });
+
+  return Array.from(questionnaireMap.values());
+}
+
+/**
+ * Merges filled questionnaires from two arrays, avoiding duplicates
+ */
+function mergeFilledQuestionnaires(filled1: FilledQuestionnaire[], filled2: FilledQuestionnaire[]): FilledQuestionnaire[] {
+  const filledMap = new Map<string, FilledQuestionnaire>();
+
+  // Combine all filled questionnaires
+  const allFilled = [...filled1, ...filled2];
+
+  // Deduplicate by ID (filled questionnaires should be immutable once created)
+  allFilled.forEach(filled => {
+    if (!filledMap.has(filled.id)) {
+      filledMap.set(filled.id, filled);
+    }
+  });
+
+  return Array.from(filledMap.values());
+}
+
+/**
+ * Processes questionnaire change logs to ensure consistent state
+ */
+function processQuestionnaireChangeLogs(
+  questionnaires: QuestionnaireConfig[],
+  changeLogs: EntityChange[]
+): QuestionnaireConfig[] {
+  // Sort changes chronologically
+  const sortedChanges = changeLogs
+    .filter(change => change.entityType === 'questionnaire' || change.entityType === 'question')
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  // Initialize questionnaire map
+  const questionnaireMap = new Map<string, QuestionnaireConfig>();
+  questionnaires.forEach(questionnaire => {
+    questionnaireMap.set(questionnaire.id, {
+      ...questionnaire,
+      questions: [...questionnaire.questions]
+    });
+  });
+
+  // Apply changes in chronological order
+  sortedChanges.forEach(change => {
+    if (change.entityType === 'questionnaire') {
+      const questionnaire = questionnaireMap.get(change.entityId);
+      if (questionnaire) {
+        switch (change.changeType) {
+          case 'rename':
+            questionnaire.name = change.newValue || questionnaire.name;
+            questionnaire.lastModified = change.timestamp;
+            break;
+          case 'update':
+            questionnaire.lastModified = change.timestamp;
+            break;
+          case 'archive':
+            questionnaire.archived = true;
+            questionnaire.lastModified = change.timestamp;
+            break;
+          case 'unarchive':
+            questionnaire.archived = false;
+            questionnaire.lastModified = change.timestamp;
+            break;
+          case 'delete':
+            questionnaireMap.delete(change.entityId);
+            break;
+        }
+      }
+    } else if (change.entityType === 'question') {
+      // Find questionnaire containing this question
+      for (const questionnaire of questionnaireMap.values()) {
+        const questionIndex = questionnaire.questions.findIndex(q => q.id === change.entityId);
+        if (questionIndex !== -1) {
+          const question = questionnaire.questions[questionIndex];
+          switch (change.changeType) {
+            case 'update':
+              question.lastModified = change.timestamp;
+              break;
+            case 'archive':
+              question.archived = true;
+              question.lastModified = change.timestamp;
+              break;
+            case 'unarchive':
+              question.archived = false;
+              question.lastModified = change.timestamp;
+              break;
+            case 'delete':
+              questionnaire.questions.splice(questionIndex, 1);
+              break;
+          }
+          break;
+        }
+      }
+    }
+  });
+
+  return Array.from(questionnaireMap.values());
+}
+
+/**
  * Merges change logs from two trackers
  */
 function mergeChangeLogs(logs1: EntityChange[] = [], logs2: EntityChange[] = []): EntityChange[] {
@@ -304,15 +493,40 @@ export function mergeTrackerStates(state1: AppState, state2: AppState): AppState
       ? state2.trackerName
       : state1.trackerName;
 
+  // Merge questionnaires using CRDT approach
+  let mergedQuestionnaires = mergeQuestionnaires(
+    state1.questionnaires || [],
+    state2.questionnaires || []
+  );
+
+  // Process questionnaire changes through change logs
+  mergedQuestionnaires = processQuestionnaireChangeLogs(mergedQuestionnaires, mergedChangeLogs);
+
+  // Merge filled questionnaires (avoiding duplicates)
+  const mergedFilledQuestionnaires = mergeFilledQuestionnaires(
+    state1.filledQuestionnaires || [],
+    state2.filledQuestionnaires || []
+  );
+
+  // Merge notifications (avoiding duplicates by timestamp + questionnaire ID)
+  const notificationMap = new Map<string, NotificationData>();
+  [...(state1.notifications || []), ...(state2.notifications || [])].forEach(notification => {
+    const key = `${notification.questionnaireId}-${notification.scheduledFor}`;
+    if (!notificationMap.has(key)) {
+      notificationMap.set(key, notification);
+    }
+  });
+  const mergedNotifications = Array.from(notificationMap.values());
+
   // Create the merged state
   return {
     trackerId: state1.trackerId, // Keep the same ID
     trackerName,
     screens: mergedScreens,
     currentScreenId,
-    questionnaires: [...(state1.questionnaires || []), ...(state2.questionnaires || [])],
-    filledQuestionnaires: [...(state1.filledQuestionnaires || []), ...(state2.filledQuestionnaires || [])],
-    notifications: [...(state1.notifications || []), ...(state2.notifications || [])],
+    questionnaires: mergedQuestionnaires,
+    filledQuestionnaires: mergedFilledQuestionnaires,
+    notifications: mergedNotifications,
     archived: state1.archived || state2.archived, // If archived in either, keep archived
     schemaVersion: Math.max(
       (state1.schemaVersion || 0),
